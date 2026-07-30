@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>VOC Radar 评论雷达 — 跨境竞品评论洞察看板</title>
+  <link rel="stylesheet" href="css/style.css" />
+  <!-- Chart.js：图表渲染 -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+  <!-- marked.js：Markdown 渲染 -->
+  <script src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js"></script>
+  <!-- DOMPurify：Markdown 渲染后的 XSS 防护 -->
+  <script src="https://cdn.jsdelivr.net/npm/dompurify@3.0.11/dist/purify.min.js"></script>
+</head>
+<body>
+  <!-- ============ 顶部导航 ============ -->
+  <header class="topbar">
+    <div class="topbar-brand">
+      <span class="brand-logo" aria-hidden="true">📡</span>
+      <div class="brand-text">
+        <h1>VOC Radar 评论雷达</h1>
+        <span class="brand-sub">跨境竞品评论 · 痛点雷达 · 决策看板</span>
+      </div>
+    </div>
+
+    <div class="topbar-actions">
+      <div class="search-box">
+        <input id="searchInput" type="text" placeholder="输入品类关键词或 ASIN（逗号分隔）" />
+        <button id="analyzeBtn" class="btn btn-primary" type="button">开始分析</button>
+      </div>
+      <button id="exportReportBtn" class="btn btn-ghost" type="button" disabled>导出报告</button>
+      <button id="viewReportBtn" class="btn btn-ghost" type="button" disabled>预览报告</button>
+    </div>
+  </header>
+
+  <main class="main">
+    <!-- ============ 进度条区（SSE 接收 pipeline 进度） ============ -->
+    <section id="progressSection" class="progress-section" hidden>
+      <!-- progress.js 渲染 -->
+    </section>
+
+    <!-- ============ 空态：尚未创建项目 ============ -->
+    <section id="emptyState" class="empty-state">
+      <div class="empty-illustration" aria-hidden="true">📊</div>
+      <h2>输入品类或竞品 ASIN，开始评论洞察分析</h2>
+      <p>系统将自动完成：采集 → 预处理 → 语义聚类 → 痛点分级 → R1 根因归因 → 改进建议 → 报告导出</p>
+      <p class="empty-hint">例如：<code>bluetooth earbuds</code> 或 <code>B0xxx, B0yyy, B0zzz</code></p>
+    </section>
+
+    <!-- ============ 分析概览区（KPI + 图表 + 卖点） ============ -->
+    <section id="dashboard" class="dashboard" hidden>
+      <!-- KPI 卡片行 -->
+      <div class="kpi-row" id="kpiRow">
+        <!-- kpi.js / app.js 动态渲染 -->
+      </div>
+
+      <!-- 痛点热力图 -->
+      <div class="panel panel-heatmap">
+        <div class="panel-header">
+          <h2><span aria-hidden="true">🔥</span> 痛点热力图</h2>
+          <span class="panel-tip">按影响面排序 · 点击任一痛点下钻详情</span>
+        </div>
+        <div class="panel-body">
+          <div class="chart-wrap chart-heatmap-wrap">
+            <canvas id="heatmapCanvas" aria-label="痛点热力图"></canvas>
+          </div>
+          <p id="heatmapEmpty" class="chart-empty" hidden>暂无痛点数据</p>
+        </div>
+      </div>
+
+      <!-- 改进优先级矩阵 -->
+      <div class="panel panel-matrix">
+        <div class="panel-header">
+          <h2><span aria-hidden="true">🎯</span> 改进优先级矩阵</h2>
+          <span class="panel-tip">影响面 × 解决难度 · 悬停查看痛点 · 点击下钻</span>
+        </div>
+        <div class="panel-body">
+          <div class="chart-wrap chart-matrix-wrap">
+            <canvas id="matrixCanvas" aria-label="改进优先级矩阵"></canvas>
+          </div>
+          <div class="matrix-legend">
+            <span class="legend-item"><i class="dot dot-quick"></i>Quick Win 高影响·易解决</span>
+            <span class="legend-item"><i class="dot dot-strategic"></i>Strategic 高影响·难解决</span>
+            <span class="legend-item"><i class="dot dot-filler"></i>Filler 低影响·易解决</span>
+            <span class="legend-item"><i class="dot dot-thankless"></i>Thankless 低影响·难解决</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 差异化卖点建议清单 -->
+      <div class="panel panel-suggestions">
+        <div class="panel-header">
+          <h2><span aria-hidden="true">💡</span> 差异化卖点建议清单</h2>
+          <span class="panel-tip">竞品共性弱点 → 你的 Listing 卖点</span>
+        </div>
+        <div class="panel-body">
+          <ol id="suggestionsList" class="suggestions-list">
+            <!-- suggestions.js 动态渲染 -->
+          </ol>
+          <p id="suggestionsEmpty" class="chart-empty" hidden>暂无卖点建议</p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- ============ 痛点下钻详情面板（抽屉） ============ -->
+  <aside id="detailPanel" class="detail-panel" aria-hidden="true" hidden>
+    <div class="detail-overlay" data-close-detail></div>
+    <div class="detail-drawer" role="dialog" aria-modal="true" aria-labelledby="detailTitle">
+      <header class="detail-header">
+        <h2 id="detailTitle">痛点详情</h2>
+        <button class="detail-close" type="button" data-close-detail aria-label="关闭">×</button>
+      </header>
+      <div class="detail-body" id="detailBody">
+        <!-- detail-panel.js 动态渲染 -->
+      </div>
+    </div>
+  </aside>
+
+  <!-- ============ 报告预览弹层 ============ -->
+  <div id="reportModal" class="report-modal" aria-hidden="true" hidden>
+    <div class="report-overlay" data-close-report></div>
+    <div class="report-dialog" role="dialog" aria-modal="true" aria-labelledby="reportTitle">
+      <header class="report-header">
+        <h2 id="reportTitle"><span aria-hidden="true">📄</span> 分析报告预览</h2>
+        <div class="report-actions">
+          <button id="downloadMdBtn" class="btn btn-ghost" type="button">下载 Markdown</button>
+          <button class="report-close" type="button" data-close-report aria-label="关闭">×</button>
+        </div>
+      </header>
+      <div class="report-body" id="reportBody">
+        <!-- report-view.js 动态渲染 -->
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ 全局提示 Toast ============ -->
+  <div id="toast" class="toast" hidden></div>
+
+  <!-- ============ 脚本（按依赖顺序加载） ============ -->
+  <script src="js/api.js"></script>
+  <script src="js/components/progress.js"></script>
+  <script src="js/components/heatmap.js"></script>
+  <script src="js/components/matrix.js"></script>
+  <script src="js/components/detail-panel.js"></script>
+  <script src="js/components/suggestions.js"></script>
+  <script src="js/components/report-view.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

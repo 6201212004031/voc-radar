@@ -1,0 +1,38 @@
+# Web 框架
+fastapi>=0.110.0
+uvicorn[standard]>=0.27.0
+python-multipart>=0.0.9
+sse-starlette>=2.0.0
+
+# 配置与日志
+pydantic>=2.6.0
+pydantic-settings>=2.2.0
+python-dotenv>=1.0.1
+
+# 数据库
+sqlalchemy>=2.0.29
+
+# 数据处理
+pandas>=2.2.3
+numpy>=1.26.4
+
+# 机器学习
+scikit-learn>=1.4.2
+
+# HTTP 客户端
+httpx>=0.27.0
+
+# LLM SDK（OpenAI 兼容，直连 Model Router）
+openai>=1.28.0
+
+# 报告渲染
+jinja2>=3.1.4
+markdown>=3.6
+
+# 工具
+python-dateutil>=2.9.0
+tenacity>=8.2.3
+
+# 开发依赖（可选）
+pytest>=8.1.1
+pytest-asyncio>=0.23.6
