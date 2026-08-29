@@ -16,7 +16,7 @@
   --text-primary: #eceef1;
   --text-secondary: #b6bbc2;
   --text-muted: #82888f;
-  --text-faint: #5c6268;
+  --text-faint: #66696f;
 
   /* 强调色：磷光青 */
   --accent: #2fe0bd;
@@ -44,7 +44,7 @@
 
   /* 线条由文本色派生，任何底上都协调 */
   --hairline: color-mix(in oklab, var(--text-primary) 7%, transparent);
-  --line: color-mix(in oklab, var(--text-primary) 13%, transparent);
+  --line: color-mix(in oklab, var(--text-primary) 18%, transparent);
   --line-str: color-mix(in oklab, var(--text-primary) 26%, transparent);
   --grid-line: color-mix(in oklab, var(--text-primary) 2.5%, transparent);
 
@@ -115,7 +115,7 @@
     --text-primary: oklch(0.930 0.004 265);
     --text-secondary: oklch(0.750 0.008 265);
     --text-muted: oklch(0.580 0.010 265);
-    --text-faint: oklch(0.450 0.010 265);
+    --text-faint: oklch(0.520 0.010 265);
     --accent: oklch(0.820 0.145 172);
     --accent-dim: oklch(0.620 0.110 172);
     --sev-1: oklch(0.920 0.090 95);
@@ -821,6 +821,15 @@ button { font-family: inherit; cursor: pointer; }
   gap: var(--s-2);
   flex-wrap: wrap;
 }
+
+/* 数值评分比其余 meta 高一级：评委靠它核对归因结论可信度 */
+.meta-rating {
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.06em;
+}
+
+.meta-helpful { font-variant-numeric: tabular-nums; letter-spacing: 0.06em; }
 
 .evidence-link {
   color: var(--accent);

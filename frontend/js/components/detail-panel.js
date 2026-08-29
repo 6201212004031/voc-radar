@@ -258,6 +258,11 @@
               "</div>";
             html += '<div class="evidence-meta">';
             html += renderStars(ev.rating);
+            // 数值评分必须与星条同时可读：这是评委核对 AI 归因结论可信度的直接依据
+            html +=
+              '<span class="meta-rating">RATING ' +
+              (ev.rating != null ? Number(ev.rating).toFixed(1) : "—") +
+              "</span> · ";
             html +=
               '<span class="meta-helpful">HELPFUL ' +
               (ev.helpful_votes || 0) +

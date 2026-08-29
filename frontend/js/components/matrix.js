@@ -21,7 +21,7 @@
       fontMono: "Consolas,monospace",
       text: "#eceef1",
       textMuted: "#82888f",
-      textFaint: "#5c6268",
+      textFaint: "#66696f",
       accent: "#2fe0bd",
       grid: "rgba(236,238,241,0.07)",
       gridMid: "rgba(236,238,241,0.26)",
