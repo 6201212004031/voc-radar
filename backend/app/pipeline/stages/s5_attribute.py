@@ -1,15 +1,17 @@
-"""Stage 5: R1 根因归因（Top 8→Top 5 筛选 + R1 调用 + 证据解析）.
+"""Stage 5: 根因归因（Top 8→Top 5 筛选 + 深度归因调用 + 证据解析）.
 
 职责:
 1. 取 rank_by_impact 前 8 的痛点（candidates）
 2. 过滤 suitable_for_reasoning=true 的，取前 5 → Top 5
 3. 标记 pain_points.is_top5 = true
-4. 对每个 Top 5 痛点调用 DeepSeek-R1:
+4. 对每个 Top 5 痛点调用深度归因模型（主力由 settings.ATTRIBUTION_MODEL 决定，
+   默认 qwen3.7-max；deepseek-r1 为可选补充通道。选型依据
+   data/reports/r1_vs_qwen_compare.md 的 Top5 全样本对照实验）:
    - System: 产品根因分析专家，规则：引用原文/不编造/信息不足说明"无法确认"
    - User: 痛点标签 + 代表性评论 Top 10 + [可选]图片缺陷标签
-5. 解析 R1 输出（json_helpers 容错解析）
-6. 写入 attributions 表（model_used='deepseek-r1'）
-7. R1 失败时降级用 qwen3.7-max（model_used='qwen3.7-max'）
+5. 解析模型输出（json_helpers 容错解析）
+6. 写入 attributions 表（model_used 记录实际模型）
+7. 主力模型失败时自动降级备用模型（model_used 记录实际模型）
 
 输入: project_id
 输出: AttributeStageResult 统计
@@ -45,16 +47,16 @@ class AttributeStageResult:
     """Top 8 候选数"""
 
     top5_count: int = 0
-    """实际进入 R1 归因的 Top 5 数"""
+    """实际进入深度归因的 Top 5 数"""
 
-    r1_success: int = 0
-    """R1 成功调用数"""
+    primary_success: int = 0
+    """归因主力模型（settings.ATTRIBUTION_MODEL）成功调用数"""
 
-    r1_failed: int = 0
-    """R1 失败数（已降级到 qwen-max）"""
+    primary_failed: int = 0
+    """归因主力模型失败数（已降级到补充通道）"""
 
-    qwen_fallback_count: int = 0
-    """降级到 qwen-max 的次数"""
+    fallback_count: int = 0
+    """降级到补充通道的次数"""
 
     by_pain_point: dict[str, dict[str, Any]] = field(default_factory=dict)
     """每个 Top 5 痛点的归因结果摘要"""
@@ -63,9 +65,9 @@ class AttributeStageResult:
         return {
             "candidates_count": self.candidates_count,
             "top5_count": self.top5_count,
-            "r1_success": self.r1_success,
-            "r1_failed": self.r1_failed,
-            "qwen_fallback_count": self.qwen_fallback_count,
+            "primary_success": self.primary_success,
+            "primary_failed": self.primary_failed,
+            "fallback_count": self.fallback_count,
             "by_pain_point": self.by_pain_point,
         }
 
@@ -151,19 +153,40 @@ async def _call_qwen_fallback(messages: list[dict]) -> dict:
     )
 
 
+def _other_model(model: str) -> str:
+    """取归因的备选模型（主力失败时降级用）.
+
+    归因主力由 ``settings.ATTRIBUTION_MODEL`` 决定（默认 qwen3.7-max，依据
+    R1 vs qwen-max 对比实验结论，见 data/reports/r1_vs_qwen_compare.md）；
+    另一个模型自动成为可选补充通道。
+    """
+    return settings.MODEL_R1 if model == settings.MODEL_LLM else settings.MODEL_LLM
+
+
+async def _call_model(model: str, messages: list[dict]) -> dict:
+    """用指定模型做 JSON 归因（主力 / 补充通道共用）."""
+    client = get_model_router()
+    return await client.chat_json(
+        messages=messages,
+        model=model,
+        schema=r1_prompts.OUTPUT_SCHEMA,
+        temperature=0.3,
+    )
+
+
 def _attribute_one_pain_point(
     pain_point: PainPoint,
     reviews: list[Review],
     vision_tags: list[str] | None = None,
 ) -> dict[str, Any]:
-    """对单个痛点做 R1 归因，失败时降级 qwen-max.
+    """对单个痛点做根因归因（主力模型由 ATTRIBUTION_MODEL 决定，失败时降级备用模型）.
 
     Returns:
         {
             "root_cause": str,
             "evidence": list[dict],
             "improvement_measures": list[dict],
-            "model_used": "deepseek-r1" | "qwen3.7-max",
+            "model_used": "qwen3.7-max" | "deepseek-r1"（实际调用者）,
             "latency_ms": int,
             "prompt_tokens": int | None,
             "completion_tokens": int | None,
@@ -180,27 +203,35 @@ def _attribute_one_pain_point(
     )
 
     start = time.time()
-    model_used = settings.MODEL_R1
+    # 归因主力由配置决定：默认 qwen3.7-max。依据 Top5 全样本对比实验
+    # （data/reports/r1_vs_qwen_compare.md）：在根因归因任务上 qwen3.7-max 质量更高、
+    # 快约 2.4 倍、更稳定；deepseek-r1 转为可选补充通道（主力失败时自动降级）。
+    primary = settings.ATTRIBUTION_MODEL
+    secondary = _other_model(primary)
+    model_used = primary
     fallback_reason: str | None = None
 
     try:
-        result = asyncio.run(_call_r1(messages))
+        result = asyncio.run(_call_model(primary, messages))
         logger.info(
-            "[s5_attribute] R1 归因成功 pain_point=%s", pain_point.id[:8]
+            "[s5_attribute] %s 归因成功 pain_point=%s", primary, pain_point.id[:8]
         )
     except (LLMError, JSONParseError) as e:
         logger.warning(
-            "[s5_attribute] R1 归因失败 pain_point=%s: %s，降级 qwen-max",
+            "[s5_attribute] %s 归因失败 pain_point=%s: %s，降级 %s",
+            primary,
             pain_point.id[:8],
             e,
+            secondary,
         )
         fallback_reason = str(e)
-        model_used = settings.MODEL_LLM
+        model_used = secondary
         try:
-            result = asyncio.run(_call_qwen_fallback(messages))
+            result = asyncio.run(_call_model(secondary, messages))
         except (LLMError, JSONParseError) as e2:
             logger.error(
-                "[s5_attribute] qwen-max 降级也失败 pain_point=%s: %s",
+                "[s5_attribute] %s 补充通道也失败 pain_point=%s: %s",
+                secondary,
                 pain_point.id[:8],
                 e2,
             )
@@ -299,7 +330,7 @@ def run_s5_attribute(project_id: str) -> AttributeStageResult:
         )
         session.commit()
 
-    # 4. 逐个调用 R1
+    # 4. 逐个调用深度归因模型（ATTRIBUTION_MODEL，默认 qwen3.7-max）
     attributions_to_create: list[Attribution] = []
 
     for pp in top5_list:
@@ -315,17 +346,19 @@ def run_s5_attribute(project_id: str) -> AttributeStageResult:
 
         try:
             attr_data = _attribute_one_pain_point(pp, reviews)
-            if attr_data["model_used"] == settings.MODEL_R1:
-                result.r1_success += 1
+            # 归因主力由 settings.ATTRIBUTION_MODEL 决定（默认 qwen3.7-max）；
+            # 只有实际用到补充通道时才计入降级，避免统计文案误导。
+            if attr_data["model_used"] == settings.ATTRIBUTION_MODEL:
+                result.primary_success += 1
             else:
-                result.r1_failed += 1
-                result.qwen_fallback_count += 1
+                result.primary_failed += 1
+                result.fallback_count += 1
         except Exception as e:
             logger.error(
                 "[s5_attribute] 痛点 %s 归因异常: %s", pp.id[:8], e
             )
-            result.r1_failed += 1
-            result.qwen_fallback_count += 1
+            result.primary_failed += 1
+            result.fallback_count += 1
             attr_data = {
                 "root_cause": f"（归因异常）{e}",
                 "evidence": [],
@@ -382,11 +415,11 @@ def run_s5_attribute(project_id: str) -> AttributeStageResult:
         ) from e
 
     logger.info(
-        "[s5_attribute] 完成 top5=%d r1_success=%d r1_failed=%d fallback=%d",
+        "[s5_attribute] 完成 top5=%d primary_success=%d primary_failed=%d fallback=%d",
         result.top5_count,
-        result.r1_success,
-        result.r1_failed,
-        result.qwen_fallback_count,
+        result.primary_success,
+        result.primary_failed,
+        result.fallback_count,
     )
     return result
 
@@ -396,7 +429,7 @@ if __name__ == "__main__":
     import argparse
     import sys
 
-    parser = argparse.ArgumentParser(description="s5_attribute: R1 根因归因")
+    parser = argparse.ArgumentParser(description="s5_attribute: 根因归因")
     parser.add_argument("--project-id", required=True, help="项目 ID")
     args = parser.parse_args()
 
@@ -404,7 +437,8 @@ if __name__ == "__main__":
         r = run_s5_attribute(args.project_id)
         print(
             f"归因完成: 候选={r.candidates_count} top5={r.top5_count} "
-            f"r1_success={r.r1_success} r1_failed={r.r1_failed} fallback={r.qwen_fallback_count}"
+            f"primary_success={r.primary_success} primary_failed={r.primary_failed} "
+            f"fallback={r.fallback_count}"
         )
         for pid, info in r.by_pain_point.items():
             print(

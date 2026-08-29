@@ -379,7 +379,7 @@
       s2_preprocess: "评论预处理",
       s3_cluster: "语义聚类",
       s4_label: "痛点标签生成",
-      s5_attribute: "R1 根因归因",
+      s5_attribute: "根因归因",
       s6_suggest: "改进建议生成",
       s7_report: "报告整合",
     };

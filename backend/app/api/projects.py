@@ -78,6 +78,9 @@ class ProjectDetailVO(ProjectVO):
     review_count: int = 0
     negative_review_count: int = 0
     pain_point_count: int = 0
+    # 真实归因记录数（成功产出 Attribution 的条数）
+    attribution_count: int = 0
+    # 旧字段名兼容别名，语义同 attribution_count
     r1_attribution_count: int = 0
 
 
@@ -97,8 +100,13 @@ def create_project(
                 progress=0.0,
             )
             project.competitor_asin_list = payload.competitor_asins
-            if payload.config:
-                project.config = payload.config
+            # 合并 config；显式指定竞品 ASIN 时打标记，
+            # s1_ingest 据此过滤（区别于入库后自动回填的列表）
+            merged_config: dict[str, Any] = dict(payload.config or {})
+            if payload.competitor_asins:
+                merged_config["asins_user_specified"] = True
+            if merged_config:
+                project.config = merged_config
             session.add(project)
             session.commit()
             session.refresh(project)
@@ -157,7 +165,7 @@ def get_project(project_id: str, request: Request) -> dict:
                 status_code=404,
             )
 
-        # 统计
+        # 统计（归因数 = Attribution 实际产出记录数，非 is_top5 标记数）
         review_count = session.execute(
             select(func.count(Review.id)).where(Review.project_id == project_id)
         ).scalar() or 0
@@ -169,10 +177,10 @@ def get_project(project_id: str, request: Request) -> dict:
         pain_point_count = session.execute(
             select(func.count(PainPoint.id)).where(PainPoint.project_id == project_id)
         ).scalar() or 0
-        r1_count = session.execute(
-            select(func.count(PainPoint.id))
-            .where(PainPoint.project_id == project_id)
-            .where(PainPoint.is_top5.is_(True))
+        attribution_count = session.execute(
+            select(func.count(Attribution.id)).where(
+                Attribution.project_id == project_id
+            )
         ).scalar() or 0
 
         vo = ProjectDetailVO(
@@ -180,7 +188,8 @@ def get_project(project_id: str, request: Request) -> dict:
             review_count=review_count,
             negative_review_count=negative_count,
             pain_point_count=pain_point_count,
-            r1_attribution_count=r1_count,
+            attribution_count=attribution_count,
+            r1_attribution_count=attribution_count,
         )
         return success(vo.model_dump(), request_id=rid)
 

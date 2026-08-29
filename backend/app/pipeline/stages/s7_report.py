@@ -4,7 +4,7 @@
 1. 从 DB 读取全部分析结果（项目/评论统计/pain_points/attributions/suggestions/listing_suggestions）
 2. 用 Jinja2 模板渲染 Markdown 报告
 3. 报告结构:
-   - 概览（竞品数/评论数/痛点数/R1归因数）
+   - 概览（竞品数/评论数/痛点数/根因归因数）
    - 痛点排名表（label/影响面/星级/趋势）
    - Top 5 痛点根因归因（根因+证据+改进措施）
    - 改进优先级矩阵
@@ -59,7 +59,7 @@ REPORT_TEMPLATE = """# {{ project.name }} — 评论分析报告
 | 评论总数 | {{ kpis.review_count }} |
 | 差评数（rating≤3） | {{ kpis.negative_review_count }} |
 | 痛点簇数 | {{ kpis.pain_point_count }} |
-| R1 归因数（Top 5） | {{ kpis.r1_attribution_count }} |
+| 根因归因数（Top 5） | {{ kpis.attribution_count }} |
 | 共性弱点数 | {{ kpis.common_weakness_count }} |
 | 改进建议数 | {{ kpis.suggestion_count }} |
 | Listing 卖点建议数 | {{ kpis.listing_suggestion_count }} |
@@ -147,7 +147,7 @@ REPORT_TEMPLATE = """# {{ project.name }} — 评论分析报告
 
 ---
 
-*本报告由 VOC Radar 评论雷达自动生成。R1 归因结果为 AI 辅助参考，最终决策请结合卖家自身判断。*
+*本报告由 VOC Radar 评论雷达自动生成。根因归因结果为 AI 辅助参考，最终决策请结合卖家自身判断。*
 """
 
 
@@ -249,15 +249,16 @@ def _gather_report_data(project_id: str) -> dict[str, Any]:
         # detach
         session.expunge_all()
 
-    # 构造 KPI
-    r1_count = len(top5_with_attr)
+    # 构造 KPI（attribution_count 为主键名，r1_attribution_count 为兼容别名）
+    attribution_count = len(top5_with_attr)
     common_weakness_count = sum(1 for p in pain_points if p.is_common_weakness)
     kpis = {
         "competitor_count": len(competitor_asins),
         "review_count": int(review_count),
         "negative_review_count": int(negative_count),
         "pain_point_count": len(pain_points),
-        "r1_attribution_count": r1_count,
+        "attribution_count": attribution_count,
+        "r1_attribution_count": attribution_count,
         "common_weakness_count": common_weakness_count,
         "suggestion_count": len(suggestions),
         "listing_suggestion_count": len(listing_suggestions),

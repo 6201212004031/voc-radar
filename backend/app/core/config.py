@@ -47,6 +47,14 @@ class Settings(BaseSettings):
     MODEL_VISION: str = Field(default="qwen3-vl-plus", description="视觉理解模型")
     MODEL_FLASH: str = Field(default="qwen3.5-flash", description="轻量快速模型")
 
+    # 根因归因主力模型。依据 Top5 全样本对比实验（data/reports/r1_vs_qwen_compare.md）：
+    # 在根因归因任务上 qwen3.7-max 质量更高、快约 2.4 倍、更稳定，故默认使用它；
+    # 高难度痛点可切换为 deepseek-r1，此时 qwen3.7-max 自动成为补充通道。
+    ATTRIBUTION_MODEL: str = Field(
+        default="qwen3.7-max",
+        description="根因归因主力模型（可选 deepseek-r1 作为高难度补充通道）",
+    )
+
     # ---------- 数据库 ----------
     DATABASE_URL: str = Field(
         default="sqlite:///./data/voc_radar.db",
@@ -90,7 +98,9 @@ class Settings(BaseSettings):
 
     # ---------- Embedding ----------
     EMBEDDING_BATCH_SIZE: int = Field(
-        default=100, ge=1, description="embedding 批量调用每批条数"
+        default=10, ge=1, le=10,
+        description="embedding 批量调用每批条数（text-embedding-v4 单次上限为 10，"
+                    "超出会报 InvalidParameter: batch size is invalid）"
     )
     EMBEDDING_CACHE_ENABLED: bool = Field(
         default=True, description="是否启用 embedding 缓存"

@@ -2,6 +2,7 @@
 
 职责:
 - 从 data_loader 拿到 RawReview 列表
+- 竞品 ASIN 过滤：项目创建时显式指定 ASIN（config.asins_user_specified）则仅保留对应评论
 - 关联到 project（设置 asin/product_name 等）
 - 去重：同一 project_id 下，按 (asin, body, rating) 去重；review_id 非空时优先按 review_id 去重
 - 写入 reviews 表
@@ -38,7 +39,10 @@ class IngestResult:
     """s1 入库结果."""
 
     total_loaded: int = 0
-    """从数据源加载的总条数"""
+    """从数据源加载的总条数（ASIN 过滤后）"""
+
+    filtered_by_asin: int = 0
+    """因不在指定竞品 ASIN 范围内而被过滤的条数"""
 
     inserted: int = 0
     """实际入库条数"""
@@ -63,11 +67,52 @@ class IngestResult:
     def to_dict(self) -> dict:
         return {
             "total_loaded": self.total_loaded,
+            "filtered_by_asin": self.filtered_by_asin,
             "inserted": self.inserted,
             "skipped_duplicate": self.skipped_duplicate,
             "skipped_invalid": self.skipped_invalid,
             "by_asin": self.by_asin,
         }
+
+
+def _apply_asin_filter(
+    raw_reviews: list[RawReview], user_asins: set[str]
+) -> tuple[list[RawReview], int]:
+    """按用户指定的竞品 ASIN 过滤评论.
+
+    Returns:
+        (过滤后列表, 被过滤条数)
+
+    Raises:
+        StageError: 指定 ASIN 在数据集中全部未命中（不静默回退全量）
+    """
+    dataset_asins = {r.asin for r in raw_reviews}
+    found = user_asins & dataset_asins
+    if not found:
+        raise StageError(
+            "s1_ingest",
+            "指定的竞品 ASIN 在数据集中均不存在: "
+            f"{sorted(user_asins)}；请检查 ASIN 是否正确，"
+            "或清空 ASIN 改用品类关键词（全量分析）",
+            code=2001,
+            recoverable=True,
+        )
+    missing = user_asins - found
+    if missing:
+        logger.warning(
+            "[s1_ingest] 以下 ASIN 未在数据集中命中，已忽略: %s",
+            sorted(missing),
+        )
+    kept = [r for r in raw_reviews if r.asin in found]
+    filtered = len(raw_reviews) - len(kept)
+    logger.info(
+        "[s1_ingest] ASIN 过滤: 命中 %d/%d 个 ASIN, 保留 %d 条, 过滤 %d 条",
+        len(found),
+        len(user_asins),
+        len(kept),
+        filtered,
+    )
+    return kept, filtered
 
 
 def run_s1_ingest(
@@ -104,6 +149,12 @@ def run_s1_ingest(
             )
         existing_asins = set(project.competitor_asin_list)
 
+        # 用户显式指定的竞品 ASIN（作为过滤条件）；
+        # 注意区分：入库后自动回填的列表不带此标记，不会触发过滤
+        user_asins: set[str] | None = None
+        if project.config.get("asins_user_specified"):
+            user_asins = set(project.competitor_asin_list)
+
     # 2. 加载评论
     if reviews_override is not None:
         raw_reviews = list(reviews_override)
@@ -120,6 +171,11 @@ def run_s1_ingest(
                 recoverable=False,
             ) from e
 
+    # 2.5 竞品 ASIN 过滤（仅当用户在创建项目时显式指定，且非测试注入路径）
+    filtered_by_asin = 0
+    if user_asins and reviews_override is None:
+        raw_reviews, filtered_by_asin = _apply_asin_filter(raw_reviews, user_asins)
+
     total = len(raw_reviews)
     logger.info("[s1_ingest] 加载到 %d 条原始评论", total)
     if total == 0:
@@ -131,7 +187,7 @@ def run_s1_ingest(
         )
 
     # 3. 去重 + 入库
-    result = IngestResult(total_loaded=total)
+    result = IngestResult(total_loaded=total, filtered_by_asin=filtered_by_asin)
 
     # 预取已有去重指纹（避免逐条查询）
     with get_session() as session:

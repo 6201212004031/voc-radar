@@ -407,7 +407,7 @@ def main():
                     root_cause=d["root_cause"],
                     evidence=json.dumps(d["evidence"], ensure_ascii=False),
                     improvement_measures=json.dumps(d["measures"], ensure_ascii=False),
-                    model_used="DeepSeek-R1",
+                    model_used="qwen3.7-max",
                     prompt_tokens=1820,
                     completion_tokens=640,
                     latency_ms=4200,

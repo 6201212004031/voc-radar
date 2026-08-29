@@ -105,15 +105,15 @@
         accent: "#a6b0cc",
       },
       {
-        label: "痛点数",
+        label: "痛点簇数",
         value: kpis.pain_point_count || 0,
         sub: "语义聚类得到",
         accent: "#ff7a45",
       },
       {
-        label: "R1 归因",
-        value: kpis.r1_attribution_count || 0,
-        sub: "Top5 根因深度推理",
+        label: "根因归因",
+        value: kpis.attribution_count ?? kpis.r1_attribution_count ?? 0,
+        sub: "Top5 痛点已进入深度归因",
         accent: "#ff4d4f",
       },
     ];
@@ -201,12 +201,6 @@
         name: parsed.name,
         category: parsed.category,
         competitor_asins: parsed.competitor_asins,
-        config: {
-          k_range: [8, 15],
-          top_n: 5,
-          enable_r1: true,
-          enable_vision: false,
-        },
       });
 
       const projectId = project.id || (project.project && project.project.id);
@@ -218,13 +212,8 @@
       // 2. 显示进度区
       progress.start(projectId);
 
-      // 3. 触发 pipeline
-      await global.VOC_API.analyze(projectId, {
-        k_range: [8, 15],
-        top_n: 5,
-        enable_r1: true,
-        enable_vision: false,
-      });
+      // 3. 触发 pipeline（阶段参数由后端配置决定，前端不传僵尸参数）
+      await global.VOC_API.analyze(projectId);
 
       // SSE 由 progress 组件接收，complete 回调里加载 overview
     } catch (err) {

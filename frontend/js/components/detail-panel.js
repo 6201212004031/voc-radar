@@ -4,8 +4,8 @@
  * 职责：
  *  - 渲染右侧抽屉式下钻面板
  *  - 三大区域：
- *    1) R1 根因归因（根因 + 证据引用 + 改进措施）
- *    2) 代表性评论（Top 5，按点赞数排序，可展开原文）
+ *    1) 根因归因（根因 + 证据引用 + 改进措施；主力模型由 ATTRIBUTION_MODEL 配置）
+ *    2) 代表性评论（代表性优先、按点赞数排序，可展开原文）
  *    3) 竞品对比（各竞品该痛点占比/星级/是否共性）
  *  - 通过 VOC_API.getPainPointDetail 拉取数据
  *  - 支持"查看原文"滚动定位 + 高亮
@@ -217,7 +217,7 @@
         "</span></div>";
       if (pp.is_top5) {
         html +=
-          '<div class="summary-item"><span class="summary-label">归因级别</span><span class="summary-value" style="color:var(--brand)">R1 Top5</span></div>';
+          '<div class="summary-item"><span class="summary-label">归因级别</span><span class="summary-value" style="color:var(--brand)">Top5 深度归因</span></div>';
       }
       if (pp.is_common_weakness) {
         html +=
@@ -232,9 +232,9 @@
           "</p>";
       }
 
-      // ===== R1 根因归因 =====
+      // ===== 根因归因（主力模型由后端 ATTRIBUTION_MODEL 配置决定，默认 qwen3.7-max） =====
       html += '<section class="detail-section">';
-      html += "<h3><span aria-hidden=\"true\">🔍</span> R1 根因归因</h3>";
+      html += "<h3><span aria-hidden=\"true\">🔍</span> 根因归因</h3>";
       if (attr && attr.root_cause) {
         html += '<div class="attribution-box">';
         html +=
@@ -300,7 +300,7 @@
         html += "</div>";
       } else {
         html +=
-          '<div class="chart-empty">该痛点未进入 R1 归因 Top5，无根因归因数据。<br><span style="font-size:11px;color:var(--text-muted);">说明：仅适合深度推理的痛点（体验型/环境触发型）会进入 R1 归因。</span></div>';
+          '<div class="chart-empty">该痛点未进入根因归因 Top5，无归因数据。<br><span style="font-size:11px;color:var(--text-muted);">说明：仅适合深度推理的痛点（体验型/环境触发型）会进入 Top5 归因。</span></div>';
       }
       html += "</section>";
 

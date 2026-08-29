@@ -154,14 +154,27 @@ def get_overview(project_id: str, request: Request) -> dict:
             .scalars()
             .all()
         )
-        r1_count = sum(1 for p in pain_points if p.is_top5)
+        # 真实成功归因数：Attribution 表中实际产出记录的条数（is_top5 标记数
+        # 在归因全部降级失败时仍为 5，不能作为"归因完成"口径）
+        attribution_count = (
+            session.execute(
+                select(func.count(Attribution.id)).where(
+                    Attribution.project_id == project_id
+                )
+            )
+            .scalar()
+            or 0
+        )
 
         kpis = {
             "competitor_count": len(project.competitor_asin_list),
             "review_count": review_count,
             "negative_review_count": negative_count,
             "pain_point_count": len(pain_points),
-            "r1_attribution_count": r1_count,
+            # 新口径：真实归因记录数（Top5 进入深度归因后的成功产出）
+            "attribution_count": attribution_count,
+            # 旧字段名兼容（语义同 attribution_count），前端/模板已切换，仅防旧引用断裂
+            "r1_attribution_count": attribution_count,
         }
 
         # 热力图数据

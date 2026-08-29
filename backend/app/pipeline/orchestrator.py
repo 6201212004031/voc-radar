@@ -19,6 +19,7 @@ from typing import Any, Awaitable, Callable, Optional
 
 from sqlalchemy import update
 
+from app.core.config import settings
 from app.core.exceptions import StageError
 from app.core.logging import get_logger
 from app.models.database import get_session
@@ -103,7 +104,7 @@ STAGES: list[StageDef] = [
         fn=run_s5_attribute,
         progress=0.80,
         recoverable=True,
-        description="R1 根因归因",
+        description="根因归因",
     ),
     StageDef(
         name="s6_suggest",
@@ -223,7 +224,7 @@ class PipelineOrchestrator:
         Args:
             project_id: 项目 ID
             on_progress: 进度回调（同步或异步），接收 SSE 事件 dict
-            config: pipeline 配置（如 k_range / top_n / enable_r1）
+            config: pipeline 配置（当前阶段参数由后端 settings 决定，保留此形参以兼容调用方签名）
 
         Returns:
             PipelineResult
@@ -431,8 +432,8 @@ class PipelineOrchestrator:
                 return f"生成 {result.labeled_count} 个痛点标签"
             if isinstance(result, AttributeStageResult):
                 return (
-                    f"Top5 归因完成: R1 成功 {result.r1_success}，"
-                    f"降级 {result.qwen_fallback_count}"
+                    f"Top5 归因完成: {settings.ATTRIBUTION_MODEL} 成功 "
+                    f"{result.primary_success}，降级 {result.fallback_count}"
                 )
             if isinstance(result, SuggestStageResult):
                 return (

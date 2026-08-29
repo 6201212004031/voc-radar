@@ -22,9 +22,9 @@
     { key: "s1_ingest", label: "数据加载", tip: "加载 Kaggle 评论数据集 / 手动采集评论" },
     { key: "s2_preprocess", label: "评论预处理", tip: "去重、过滤非 VP、元数据提取" },
     { key: "s3_cluster", label: "语义聚类", tip: "text-embedding-v4 向量化 + K-Means 聚类" },
-    { key: "s4_label", label: "痛点标签生成", tip: "qwen-max 为每簇生成标签 + 分级判断" },
-    { key: "s5_attribute", label: "R1 根因归因", tip: "DeepSeek-R1 对 Top 5 痛点深度推理" },
-    { key: "s6_suggest", label: "改进建议生成", tip: "qwen-max 整合归因 → 改进建议 + Listing 卖点" },
+    { key: "s4_label", label: "痛点标签生成", tip: "qwen3.7-max 为每簇生成标签 + 分级判断" },
+    { key: "s5_attribute", label: "根因归因", tip: "qwen3.7-max 对 Top 5 痛点深度归因（R1 为可选补充通道）" },
+    { key: "s6_suggest", label: "改进建议生成", tip: "qwen3.7-max 整合归因 → 改进建议 + Listing 卖点" },
     { key: "s7_report", label: "报告整合", tip: "Jinja2 渲染 Markdown 报告" },
   ];
 
