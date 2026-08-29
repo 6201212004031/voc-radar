@@ -21,6 +21,8 @@
    * @param {number} rating 1~5
    */
   function renderStars(rating) {
+    // 无评分就不画星条：5 个空格子只是噪声，不是信息
+    if (rating == null || rating === "") return "";
     const r = Math.round((rating || 0) * 2) / 2; // 0.5 步进
     const full = Math.floor(r);
     const half = r - full >= 0.5;
@@ -256,25 +258,37 @@
               '<div class="evidence-quote">' +
               escapeHtml(ev.quote || "") +
               "</div>";
-            html += '<div class="evidence-meta">';
-            html += renderStars(ev.rating);
-            // 数值评分必须与星条同时可读：这是评委核对 AI 归因结论可信度的直接依据
-            html +=
-              '<span class="meta-rating">RATING ' +
-              (ev.rating != null ? Number(ev.rating).toFixed(1) : "—") +
-              "</span> · ";
-            html +=
-              '<span class="meta-helpful">HELPFUL ' +
-              (ev.helpful_votes || 0) +
-              "</span> · ";
-            if (ev.asin) html += escapeHtml(ev.asin) + " · ";
-            if (ev.review_id) {
-              html +=
-                '<a class="evidence-link" data-review-id="' +
-                escapeHtml(ev.review_id) +
-                '">查看原文</a>';
+            // meta 用数组 join，避免末尾出现悬空的 " · "
+            const metaParts = [];
+            // 数值评分与星条同时给出：评委靠它核对 AI 归因结论的可信度。
+            // attribution.evidence 的字段由 LLM 输出决定，未必带 rating
+            // （真实数据项目只有 review_id），拿不到时整块不渲染，
+            // 不摆一个永远显示 "—" 的空壳标签。
+            if (ev.rating != null && ev.rating !== "") {
+              metaParts.push(
+                renderStars(ev.rating) +
+                  '<span class="meta-rating">RATING ' +
+                  Number(ev.rating).toFixed(1) +
+                  "</span>"
+              );
             }
-            html += "</div>";
+            if (ev.helpful_votes) {
+              metaParts.push(
+                '<span class="meta-helpful">HELPFUL ' +
+                  ev.helpful_votes +
+                  "</span>"
+              );
+            }
+            if (ev.asin) metaParts.push(escapeHtml(ev.asin));
+            if (ev.review_id) {
+              metaParts.push(
+                '<a class="evidence-link" data-review-id="' +
+                  escapeHtml(ev.review_id) +
+                  '">查看原文</a>'
+              );
+            }
+            html +=
+              '<div class="evidence-meta">' + metaParts.join(" · ") + "</div>";
             html += "</li>";
           });
           html += "</ul>";

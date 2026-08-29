@@ -12,7 +12,7 @@
  *      对自定义属性，getComputedStyle **不会**把它换算成 rgb/rgba。
  *   2. 把 token 写到一个临时元素的真实颜色属性（color / borderColor / backgroundColor）
  *      上再读 getComputedStyle，能让浏览器先解析一遍：
- *        - `color-mix(in oklab, ...)` → 解析为 `oklab(0.93 ... / 0.13)`
+ *        - `color-mix(in oklab, ...)` → 解析为 `oklab(0.93 ... / 0.18)`（--line 的实测值）
  *        - `oklch(...)`              → 原样返回（仅数值归一化，仍是 oklch）
  *      这一步的价值是把 canvas 未必认得的 `color-mix()` 展开成具体颜色函数。
  *   3. 实测 Chromium 151（Edge 同内核）：canvas 2D 的 fillStyle 能直接吃
