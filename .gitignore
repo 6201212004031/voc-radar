@@ -43,3 +43,8 @@ Thumbs.db
 # 构建产物
 build/
 dist/
+
+# 素材制作临时目录（数据集下载缓存 / 视频抽帧与转码中间产物，体积大且可再生）
+_dl/
+_video_tmp/
+_video_check/
