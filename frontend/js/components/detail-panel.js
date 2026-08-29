@@ -261,9 +261,12 @@
             // meta 用数组 join，避免末尾出现悬空的 " · "
             const metaParts = [];
             // 数值评分与星条同时给出：评委靠它核对 AI 归因结论的可信度。
-            // attribution.evidence 的字段由 LLM 输出决定，未必带 rating
-            // （真实数据项目只有 review_id），拿不到时整块不渲染，
-            // 不摆一个永远显示 "—" 的空壳标签。
+            //
+            // 判据统一用「字段是否真的存在」（!= null），**不用真假值**：
+            // helpful_votes 完全可能是真实的 0，写成 if (ev.helpful_votes)
+            // 会把一个真实的 0 当成缺失而隐藏掉，等于伪造数据。
+            // 字段缺失（旧数据、LLM 没输出）时才整块不渲染，
+            // 不摆一个恒为 "—" 的空壳标签。
             if (ev.rating != null && ev.rating !== "") {
               metaParts.push(
                 renderStars(ev.rating) +
@@ -272,10 +275,10 @@
                   "</span>"
               );
             }
-            if (ev.helpful_votes) {
+            if (ev.helpful_votes != null) {
               metaParts.push(
                 '<span class="meta-helpful">HELPFUL ' +
-                  ev.helpful_votes +
+                  Number(ev.helpful_votes) +
                   "</span>"
               );
             }
