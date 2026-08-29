@@ -14,29 +14,49 @@
 (function (global) {
   "use strict";
 
-  const CHART_FONT =
-    '-apple-system, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif';
+  // 图表 token：来自 theme.js（Canvas 读不到 CSS 变量，只能走桥接层）
+  const T =
+    global.VOC_THEME || {
+      font: '"PingFang SC","Microsoft YaHei",sans-serif',
+      fontMono: "Consolas,monospace",
+      text: "#eceef1",
+      textMuted: "#82888f",
+      textFaint: "#5c6268",
+      accent: "#2fe0bd",
+      grid: "rgba(236,238,241,0.07)",
+      gridMid: "rgba(236,238,241,0.26)",
+      panel: "#171a1e",
+      quad: {
+        quick_win: "#2fe0bd",
+        strategic: "#b07cf0",
+        filler: "#9aa4b2",
+        thankless: "#5b6472",
+      },
+      shape: {
+        quick_win: "circle",
+        strategic: "triangle",
+        filler: "rect",
+        thankless: "crossRot",
+      },
+    };
+
+  const CHART_FONT = T.font;
+  const CHART_FONT_MONO = T.fontMono;
 
   /**
-   * 根据象限返回颜色
-   * quick_win: 高影响·易解决（左上）— 绿
-   * strategic: 高影响·难解决（右上）— 橙
-   * filler:    低影响·易解决（左下）— 蓝
-   * thankless: 低影响·难解决（右下）— 灰
+   * 根据象限返回颜色（色相 + 明度 + 形状 三重编码）
+   * quick_win: 高影响·易解决（左上）— 磷光青
+   * strategic: 高影响·难解决（右上）— 紫
+   * filler:    低影响·易解决（左下）— 中性灰
+   * thankless: 低影响·难解决（右下）— 暗灰
    */
   function quadrantColor(quadrant) {
-    switch (quadrant) {
-      case "quick_win":
-        return "#52c41a";
-      case "strategic":
-        return "#ff7a45";
-      case "filler":
-        return "#4d8dff";
-      case "thankless":
-        return "#8c8c8c";
-      default:
-        return "#ffd666";
-    }
+    return T.quad[quadrant] || T.accent;
+  }
+
+  /** 象限形状：灰度截图 / 色盲 / 黑白打印下也能分辨 */
+  function quadrantShape(quadrant) {
+    return T.shape[quadrant] || "circle";
   }
 
   function quadrantLabel(quadrant) {
@@ -106,14 +126,15 @@
             x: d.difficulty_score != null ? +d.difficulty_score.toFixed(3) : 0.5,
             y: d.impact_ratio != null ? +d.impact_ratio.toFixed(3) : 0,
           })),
-          backgroundColor: quadrantColor(q),
+          // thankless 空心（退场），其余实心
+          backgroundColor: q === "thankless" ? "transparent" : quadrantColor(q),
           borderColor: quadrantColor(q),
           borderWidth: 2,
           pointRadius: items.map((d) =>
             d.priority === "high" ? 11 : d.priority === "medium" ? 9 : 7
           ),
           pointHoverRadius: 14,
-          pointStyle: "circle",
+          pointStyle: quadrantShape(q),
           // 自定义数据
           _raw: items,
         };
@@ -131,7 +152,8 @@
         options: {
           responsive: true,
           maintainAspectRatio: false,
-          animation: { duration: 600, easing: "easeOutQuart" },
+          // 同 heatmap：headless/录屏场景必须直接看到完整散点
+          animation: false,
           scales: {
             x: {
               min: 0,
@@ -139,23 +161,22 @@
               title: {
                 display: true,
                 text: "解决难度  →  难",
-                color: "#a6b0cc",
+                color: T.textMuted,
                 font: { family: CHART_FONT, size: 12 },
               },
               grid: {
                 color: function (ctx) {
                   // 中线高亮
-                  if (ctx.tick.value === diffThr)
-                    return "rgba(140,160,220,0.32)";
-                  return "rgba(140,160,220,0.06)";
+                  if (ctx.tick.value === diffThr) return T.gridMid;
+                  return T.grid;
                 },
                 lineWidth: function (ctx) {
                   return ctx.tick.value === diffThr ? 1.5 : 1;
                 },
               },
               ticks: {
-                color: "#6b769a",
-                font: { family: CHART_FONT, size: 11 },
+                color: T.textFaint,
+                font: { family: CHART_FONT_MONO, size: 11 },
                 stepSize: 0.2,
                 callback: function (v) {
                   if (v === 0) return "易";
@@ -173,22 +194,21 @@
               title: {
                 display: true,
                 text: "影响面  →  高",
-                color: "#a6b0cc",
+                color: T.textMuted,
                 font: { family: CHART_FONT, size: 12 },
               },
               grid: {
                 color: function (ctx) {
-                  if (ctx.tick.value === impactThr)
-                    return "rgba(140,160,220,0.32)";
-                  return "rgba(140,160,220,0.06)";
+                  if (ctx.tick.value === impactThr) return T.gridMid;
+                  return T.grid;
                 },
                 lineWidth: function (ctx) {
                   return ctx.tick.value === impactThr ? 1.5 : 1;
                 },
               },
               ticks: {
-                color: "#6b769a",
-                font: { family: CHART_FONT, size: 11 },
+                color: T.textFaint,
+                font: { family: CHART_FONT_MONO, size: 11 },
                 callback: function (v) {
                   return (v * 100).toFixed(0) + "%";
                 },
@@ -200,15 +220,15 @@
               display: false, // 用外部 HTML 图例
             },
             tooltip: {
-              backgroundColor: "rgba(19,26,48,0.95)",
-              borderColor: "rgba(140,160,220,0.28)",
+              backgroundColor: T.panel,
+              borderColor: T.gridMid,
               borderWidth: 1,
-              titleColor: "#e8ecf6",
-              bodyColor: "#a6b0cc",
-              titleFont: { family: CHART_FONT, size: 13, weight: "bold" },
-              bodyFont: { family: CHART_FONT, size: 12 },
+              titleColor: T.text,
+              bodyColor: T.textMuted,
+              titleFont: { family: CHART_FONT, size: 13, weight: "600" },
+              bodyFont: { family: CHART_FONT_MONO, size: 12 },
               padding: 10,
-              cornerRadius: 8,
+              cornerRadius: 2,
               displayColors: true,
               boxWidth: 10,
               boxHeight: 10,

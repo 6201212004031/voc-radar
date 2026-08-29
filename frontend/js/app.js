@@ -91,30 +91,31 @@
     if (!row || !kpis) return;
 
     const cards = [
+      // accent 只传 CSS 变量名字符串：JS 不再持有任何颜色值
       {
         label: "竞品数",
         value: kpis.competitor_count || 0,
         sub: "已分析竞品",
-        accent: "#4d8dff",
+        accent: "var(--quad-filler)",
       },
       {
         label: "评论数",
         value: kpis.review_count || 0,
         sub:
           (kpis.negative_review_count || 0) + " 条差评用于聚类",
-        accent: "#a6b0cc",
+        accent: "var(--text-muted)",
       },
       {
         label: "痛点簇数",
         value: kpis.pain_point_count || 0,
         sub: "语义聚类得到",
-        accent: "#ff7a45",
+        accent: "var(--sev-3)",
       },
       {
         label: "根因归因",
         value: kpis.attribution_count ?? kpis.r1_attribution_count ?? 0,
         sub: "Top5 痛点已进入深度归因",
-        accent: "#ff4d4f",
+        accent: "var(--sev-5)",
       },
     ];
 
@@ -219,7 +220,7 @@
     } catch (err) {
       console.error("[App] startAnalysis error", err);
       toast("分析启动失败：" + (err.message || "未知错误"), "error");
-      progress.setMessage("❌ 分析启动失败：" + (err.message || ""), true);
+      progress.setMessage("! 分析启动失败：" + (err.message || ""), true);
       state.analyzing = false;
       analyzeBtn.disabled = false;
       analyzeBtn.textContent = "开始分析";
@@ -354,7 +355,7 @@
 
     console.info(
       "%cVOC Radar 评论雷达 已就绪",
-      "color:#4d8dff;font-weight:bold;font-size:14px;"
+      "color:#2fe0bd;font-weight:bold;font-size:14px;"
     );
   }
 

@@ -16,7 +16,19 @@
   <!-- ============ 顶部导航 ============ -->
   <header class="topbar">
     <div class="topbar-brand">
-      <span class="brand-logo" aria-hidden="true">📡</span>
+      <span class="brand-logo" aria-hidden="true">
+        <!-- 雷达标：同心圆 + 40° 扫描扇形 + 中心点（内联 SVG，零网络依赖） -->
+        <svg viewBox="0 0 26 26" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M13 13 L13 1.5 A11.5 11.5 0 0 1 20.39 4.19 Z"
+                fill="currentColor" fill-opacity="0.22" />
+          <circle cx="13" cy="13" r="11.5" stroke="currentColor" stroke-width="1.5" />
+          <circle cx="13" cy="13" r="7.5" stroke="currentColor" stroke-width="1.5"
+                  stroke-opacity="0.55" />
+          <circle cx="13" cy="13" r="3.5" stroke="currentColor" stroke-width="1.5"
+                  stroke-opacity="0.35" />
+          <circle cx="13" cy="13" r="1" fill="currentColor" />
+        </svg>
+      </span>
       <div class="brand-text">
         <h1>VOC Radar 评论雷达</h1>
         <span class="brand-sub">跨境竞品评论 · 痛点雷达 · 决策看板</span>
@@ -41,7 +53,7 @@
 
     <!-- ============ 空态：尚未创建项目 ============ -->
     <section id="emptyState" class="empty-state">
-      <div class="empty-illustration" aria-hidden="true">📊</div>
+      <div class="empty-mark" aria-hidden="true"><span></span></div>
       <h2>输入品类或竞品 ASIN，开始评论洞察分析</h2>
       <p>系统将自动完成：评论入库 → 预处理 → 语义聚类 → 痛点标签 → 根因归因 → 改进建议 → 报告生成</p>
       <p class="empty-hint">品类关键词（如 <code>bluetooth earbuds</code>）标注分析场景，分析范围为内置评论数据集；输入 ASIN（如 <code>B0xxxxxx, B0yyyyyy</code>）则仅分析对应竞品的评论</p>
@@ -55,26 +67,28 @@
       </div>
 
       <!-- 痛点热力图 -->
-      <div class="panel panel-heatmap">
-        <div class="panel-header">
-          <h2><span aria-hidden="true">🔥</span> 痛点热力图</h2>
-          <span class="panel-tip">按影响面排序 · 点击任一痛点下钻详情</span>
+      <section class="section section-heatmap">
+        <div class="section-head">
+          <span class="section-index">01</span>
+          <h2 class="section-title">痛点热力图</h2>
+          <span class="section-tip">按影响面排序 · 点击任一痛点下钻详情</span>
         </div>
-        <div class="panel-body">
+        <div class="section-body">
           <div class="chart-wrap chart-heatmap-wrap">
             <canvas id="heatmapCanvas" aria-label="痛点热力图"></canvas>
           </div>
           <p id="heatmapEmpty" class="chart-empty" hidden>暂无痛点数据</p>
         </div>
-      </div>
+      </section>
 
       <!-- 改进优先级矩阵 -->
-      <div class="panel panel-matrix">
-        <div class="panel-header">
-          <h2><span aria-hidden="true">🎯</span> 改进优先级矩阵</h2>
-          <span class="panel-tip">影响面 × 解决难度 · 悬停查看痛点 · 点击下钻</span>
+      <section class="section section-matrix">
+        <div class="section-head">
+          <span class="section-index">02</span>
+          <h2 class="section-title">改进优先级矩阵</h2>
+          <span class="section-tip">影响面 × 解决难度 · 悬停查看痛点 · 点击下钻</span>
         </div>
-        <div class="panel-body">
+        <div class="section-body">
           <div class="chart-wrap chart-matrix-wrap">
             <canvas id="matrixCanvas" aria-label="改进优先级矩阵"></canvas>
           </div>
@@ -85,21 +99,22 @@
             <span class="legend-item"><i class="dot dot-thankless"></i>Thankless 低影响·难解决</span>
           </div>
         </div>
-      </div>
+      </section>
 
       <!-- 差异化卖点建议清单 -->
-      <div class="panel panel-suggestions">
-        <div class="panel-header">
-          <h2><span aria-hidden="true">💡</span> 差异化卖点建议清单</h2>
-          <span class="panel-tip">竞品共性弱点 → 你的 Listing 卖点</span>
+      <section class="section section-suggestions">
+        <div class="section-head">
+          <span class="section-index">03</span>
+          <h2 class="section-title">差异化卖点建议清单</h2>
+          <span class="section-tip">竞品共性弱点 → 你的 Listing 卖点</span>
         </div>
-        <div class="panel-body">
+        <div class="section-body">
           <ol id="suggestionsList" class="suggestions-list">
             <!-- suggestions.js 动态渲染 -->
           </ol>
           <p id="suggestionsEmpty" class="chart-empty" hidden>暂无卖点建议</p>
         </div>
-      </div>
+      </section>
     </section>
   </main>
 
@@ -122,7 +137,7 @@
     <div class="report-overlay" data-close-report></div>
     <div class="report-dialog" role="dialog" aria-modal="true" aria-labelledby="reportTitle">
       <header class="report-header">
-        <h2 id="reportTitle"><span aria-hidden="true">📄</span> 分析报告预览</h2>
+        <h2 id="reportTitle">分析报告预览</h2>
         <div class="report-actions">
           <button id="downloadMdBtn" class="btn btn-ghost" type="button">下载 Markdown</button>
           <button class="report-close" type="button" data-close-report aria-label="关闭">×</button>
@@ -138,6 +153,7 @@
   <div id="toast" class="toast" hidden></div>
 
   <!-- ============ 脚本（按依赖顺序加载） ============ -->
+  <script src="js/theme.js"></script>
   <script src="js/api.js"></script>
   <script src="js/components/progress.js"></script>
   <script src="js/components/heatmap.js"></script>

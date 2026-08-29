@@ -102,7 +102,7 @@
           s.label +
           "</span></span>"
         );
-      }).join('<span style="color:var(--text-muted);margin:0 4px;">›</span>');
+      }).join('<span class="stage-sep" aria-hidden="true">›</span>');
     }
 
     /**
@@ -185,7 +185,7 @@
       const stageInfo = STAGES.find((s) => s.key === data.stage);
       if (stageInfo && data.output_summary) {
         this._setMessage(
-          "✅ " + stageInfo.label + " 完成：" + data.output_summary
+          "✓ " + stageInfo.label + " 完成：" + data.output_summary
         );
       }
     }
@@ -193,17 +193,14 @@
     _onError(data) {
       const msg = (data && data.message) || "pipeline 执行出错";
       const code = (data && data.error_code) || "UNKNOWN";
-      this._setMessage("❌ " + msg + "（错误码：" + code + "）", true);
+      this._setMessage("! " + msg + "（错误码：" + code + "）", true);
 
-      // 标记当前阶段为错误
+      // 标记当前阶段为错误（样式全部交给 CSS，JS 不再持有颜色值）
       if (data && data.stage) {
         const stageEl = document.querySelector(
           '.progress-stage[data-stage="' + data.stage + '"] .stage-dot'
         );
-        if (stageEl) {
-          stageEl.style.background = "var(--error)";
-          stageEl.style.boxShadow = "0 0 0 4px rgba(255,77,79,0.18)";
-        }
+        if (stageEl) stageEl.classList.add("stage-error");
       }
 
       if (this.options.onError) this.options.onError(data);
@@ -217,7 +214,7 @@
       STAGES.forEach((s) => this.completedStages.add(s.key));
       this._updateStageDots(null);
 
-      this._setMessage("🎉 分析完成！报告已生成。", false, true);
+      this._setMessage("分析完成 · 报告已生成", false, true);
 
       if (this.options.onComplete) this.options.onComplete(data);
     }

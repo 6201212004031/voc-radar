@@ -75,7 +75,21 @@ def main():
     md.append("")
 
     # 二、Top5 归因
-    md.append("## 二、Top5 痛点根因归因（DeepSeek-R1 · 证据驱动）")
+    # 归因模型如实取自 attributions.model_used（主力由 settings.ATTRIBUTION_MODEL 决定，
+    # 默认 qwen3.7-max；deepseek-r1 仅作高难度可选补充通道）
+    top5_models = []
+    for pp in pps:
+        if pp.is_top5 and pp.id in attrs:
+            m = attrs[pp.id].model_used
+            if m and m not in top5_models:
+                top5_models.append(m)
+    if not top5_models:
+        model_desc = settings.ATTRIBUTION_MODEL
+    elif len(top5_models) == 1:
+        model_desc = top5_models[0]
+    else:
+        model_desc = "主力 " + settings.ATTRIBUTION_MODEL
+    md.append(f"## 二、Top5 痛点根因归因（{model_desc} · 证据驱动）")
     md.append("")
     for pp in pps:
         if pp.is_top5 and pp.id in attrs:

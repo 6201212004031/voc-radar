@@ -16,19 +16,20 @@
   "use strict";
 
   /**
-   * 星级渲染
+   * 星级渲染 —— CSS 星条：5 个 3×8px 方块，实=sev-2 / 空=bg-elev-3
+   * 不用星形字符，避免字形缺失与灰度下的歧义
    * @param {number} rating 1~5
    */
   function renderStars(rating) {
-    const r = rating || 0;
+    const r = Math.round((rating || 0) * 2) / 2; // 0.5 步进
     const full = Math.floor(r);
     const half = r - full >= 0.5;
-    let s = "";
+    let s = '<span class="stars" aria-hidden="true">';
     for (let i = 0; i < 5; i++) {
-      if (i < full) s += "★";
-      else if (i === full && half) s += "⯨";
-      else s += "☆";
+      const on = i < full || (i === full && half);
+      s += '<i class="seg' + (on ? " on" : "") + '"></i>';
     }
+    s += "</span>";
     return s;
   }
 
@@ -178,8 +179,7 @@
       const reviews = (data && data.representative_reviews) || [];
       const compare = (data && data.competitor_comparison) || [];
 
-      title.innerHTML =
-        '<span aria-hidden="true">🔍</span> 痛点：' + escapeHtml(pp.label || "—");
+      title.innerHTML = "痛点：" + escapeHtml(pp.label || "—");
 
       const impactPct = pp.impact_ratio != null
         ? (pp.impact_ratio * 100).toFixed(1)
@@ -189,13 +189,14 @@
       let html = "";
 
       // ===== 摘要条 =====
+      // 阈值是业务逻辑（0.25 / 0.15）不动，颜色改引用 token
       html +=
         '<div class="detail-summary" style="border-left-color:' +
         (pp.impact_ratio >= 0.25
-          ? "#ff4d4f"
+          ? "var(--sev-5)"
           : pp.impact_ratio >= 0.15
-          ? "#ff7a45"
-          : "#ffa940") +
+          ? "var(--sev-4)"
+          : "var(--sev-3)") +
         '">';
       html +=
         '<div class="summary-item"><span class="summary-label">影响面</span><span class="summary-value">' +
@@ -206,7 +207,7 @@
         reviewCount +
         "</span></div>";
       html +=
-        '<div class="summary-item"><span class="summary-label">平均星级</span><span class="summary-value">⭐' +
+        '<div class="summary-item"><span class="summary-label">平均星级</span><span class="summary-value">' +
         (pp.avg_rating != null ? pp.avg_rating.toFixed(1) : "—") +
         "</span></div>";
       html +=
@@ -217,11 +218,11 @@
         "</span></div>";
       if (pp.is_top5) {
         html +=
-          '<div class="summary-item"><span class="summary-label">归因级别</span><span class="summary-value" style="color:var(--brand)">Top5 深度归因</span></div>';
+          '<div class="summary-item"><span class="summary-label">归因级别</span><span class="summary-value" style="color:var(--accent)">Top5 深度归因</span></div>';
       }
       if (pp.is_common_weakness) {
         html +=
-          '<div class="summary-item"><span class="summary-label">共性弱点</span><span class="summary-value" style="color:var(--sev-critical)">✅ 是</span></div>';
+          '<div class="summary-item"><span class="summary-label">共性弱点</span><span class="summary-value" style="color:var(--sev-5)">✓ 是</span></div>';
       }
       html += "</div>";
 
@@ -234,7 +235,8 @@
 
       // ===== 根因归因（主力模型由后端 ATTRIBUTION_MODEL 配置决定，默认 qwen3.7-max） =====
       html += '<section class="detail-section">';
-      html += "<h3><span aria-hidden=\"true\">🔍</span> 根因归因</h3>";
+      html +=
+        '<h3><span class="lbl-zh">根因归因</span><span class="lbl-en">Root Cause</span></h3>';
       if (attr && attr.root_cause) {
         html += '<div class="attribution-box">';
         html +=
@@ -255,8 +257,11 @@
               escapeHtml(ev.quote || "") +
               "</div>";
             html += '<div class="evidence-meta">';
-            html += "⭐" + (ev.rating || "-") + " · ";
-            html += "👍 " + (ev.helpful_votes || 0) + " · ";
+            html += renderStars(ev.rating);
+            html +=
+              '<span class="meta-helpful">HELPFUL ' +
+              (ev.helpful_votes || 0) +
+              "</span> · ";
             if (ev.asin) html += escapeHtml(ev.asin) + " · ";
             if (ev.review_id) {
               html +=
@@ -307,9 +312,9 @@
       // ===== 代表性评论 =====
       html += '<section class="detail-section">';
       html +=
-        "<h3><span aria-hidden=\"true\">📋</span> 代表性评论（Top " +
+        '<h3><span class="lbl-zh">代表性评论（Top ' +
         reviews.length +
-        "，按点赞数排序）</h3>";
+        '，按点赞数排序）</span><span class="lbl-en">Evidence</span></h3>';
       if (reviews.length) {
         html += '<div class="review-list" id="reviewList">';
         reviews.forEach((rv, idx) => {
@@ -322,14 +327,18 @@
             '">';
           html += '<div class="review-head">';
           html +=
-            '<span class="stars" title="' +
+            renderStars(rv.rating) +
+            '<span title="' +
             (rv.rating || 0) +
             '星">' +
-            renderStars(rv.rating) +
-            "</span>";
+            (rv.rating || 0) +
+            "星</span>";
           if (rv.date) html += " · " + escapeHtml(rv.date);
           if (rv.variant) html += " · 变体：" + escapeHtml(rv.variant);
-          html += " · 👍 " + (rv.helpful_votes || 0);
+          html +=
+            ' · <span class="meta-helpful">HELPFUL ' +
+            (rv.helpful_votes || 0) +
+            "</span>";
           if (rv.asin) html += " · " + escapeHtml(rv.asin);
           html += "</div>";
           if (rv.title) {
@@ -364,7 +373,8 @@
 
       // ===== 竞品对比 =====
       html += '<section class="detail-section">';
-      html += "<h3><span aria-hidden=\"true\">🆚</span> 竞品对比</h3>";
+      html +=
+        '<h3><span class="lbl-zh">竞品对比</span><span class="lbl-en">Benchmark</span></h3>';
       if (compare.length) {
         html += '<table class="compare-table">';
         html += "<thead><tr>";
@@ -391,14 +401,14 @@
               : "—") +
             "</td>";
           html +=
-            "<td>⭐" +
+            "<td>" +
             (c.avg_rating != null ? c.avg_rating.toFixed(1) : "—") +
             "</td>";
           html +=
             "<td>" +
             (c.is_common
-              ? '<span class="common-badge">✅ 共性</span>'
-              : '<span style="color:var(--text-muted)">—</span>') +
+              ? '<span class="common-badge">共性</span>'
+              : '<span style="color:var(--text-faint)">—</span>') +
             "</td>";
           html += "</tr>";
         });
@@ -408,7 +418,7 @@
         const commonCount = compare.filter((c) => c.is_common).length;
         if (commonCount >= 2) {
           html +=
-            '<div class="common-hint">💡 这是品类共性弱点（' +
+            '<div class="common-hint">这是品类共性弱点（' +
             commonCount +
             "/" +
             compare.length +
@@ -488,19 +498,16 @@
 
       const lb = document.createElement("div");
       lb.id = "vocLightbox";
-      lb.style.cssText =
-        "position:fixed;inset:0;z-index:120;background:rgba(8,12,28,0.92);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;";
+      lb.className = "voc-lightbox";
       lb.innerHTML =
-        '<div style="color:#e8ecf6;margin-bottom:12px;font-size:15px;">' +
-        (title || "图片预览") +
-        '</div><div style="display:flex;gap:12px;flex-wrap:wrap;justify-content:center;max-width:90vw;"></div>' +
-        '<button style="margin-top:16px;padding:8px 16px;background:#1a2342;color:#e8ecf6;border:1px solid #2c3760;border-radius:6px;cursor:pointer;">关闭</button>';
-      const imgBox = lb.querySelector("div:nth-child(2)");
+        '<div class="voc-lightbox-title">' +
+        escapeHtml(title || "图片预览") +
+        '</div><div class="voc-lightbox-images"></div>' +
+        '<button class="btn btn-ghost voc-lightbox-close" type="button">关闭</button>';
+      const imgBox = lb.querySelector(".voc-lightbox-images");
       urls.forEach((u) => {
         const img = document.createElement("img");
         img.src = u;
-        img.style.cssText =
-          "max-width:320px;max-height:320px;border-radius:8px;border:1px solid #2c3760;";
         img.alt = title || "买家秀";
         imgBox.appendChild(img);
       });
