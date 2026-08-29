@@ -2,11 +2,13 @@
 from __future__ import annotations
 
 import logging
+import re
 from typing import Any
 
 from fastapi import APIRouter, Query, Request
 from pydantic import BaseModel, Field
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
+from sqlalchemy.orm import Session
 
 from app.api.response import error, get_request_id, success
 from app.core.exceptions import ErrorCode
@@ -23,6 +25,11 @@ from app.models.schemas import (
 
 logger = get_logger(__name__)
 router = APIRouter()
+
+# evidence 里的 review_id 是截断形式（归因 prompt 为省 token 只给了前 12 字符），
+# 与 reviews 表主键（完整 UUID）无法精确匹配，只能按前缀回查。
+_EVIDENCE_ID_PREFIX_LEN = 12
+_UUID_FRAGMENT_RE = re.compile(r"[0-9a-fA-F-]+")
 
 
 # ---------- 视图模型 ----------
@@ -83,12 +90,12 @@ class AttributionVO(BaseModel):
     created_at: str
 
     @classmethod
-    def from_orm(cls, a: Attribution) -> "AttributionVO":
+    def from_orm(cls, a: Attribution, session: Session | None = None) -> "AttributionVO":
         return cls(
             id=a.id,
             pain_point_id=a.pain_point_id,
             root_cause=a.root_cause,
-            evidence=a.evidence_list,
+            evidence=_enrich_evidence(session, a) if session else a.evidence_list,
             improvement_measures=a.measures_list,
             model_used=a.model_used,
             prompt_tokens=a.prompt_tokens,
@@ -119,6 +126,57 @@ class PainPointDetailVO(BaseModel):
     representative_reviews: list[dict[str, Any]]
     suggestions: list[SuggestionVO]
     competitor_comparison: list[dict[str, Any]]
+
+
+def _enrich_evidence(session: Session, a: Attribution) -> list[dict[str, Any]]:
+    """回查 reviews 表，为 evidence 补上评分等可验证字段.
+
+    LLM 产出的 evidence 只带 review_id / quote / explanation，评分与点赞数
+    需要回查 reviews 表才拿得到。evidence 里的 review_id 是截断形式，故按
+    前缀匹配。仅补缺失字段，已存在的值（如 Seed Demo 自带）原样保留；
+    未命中的条目不加占位值，交由前端按"有则渲染、无则不渲染"处理。
+    """
+    evidence = a.evidence_list
+    if not evidence:
+        return evidence
+
+    # review_id 来自 LLM 输出，只接受 UUID 片段，避免拼进 LIKE 模式
+    prefixes = {
+        str(e["review_id"])[:_EVIDENCE_ID_PREFIX_LEN]
+        for e in evidence
+        if isinstance(e, dict) and e.get("review_id")
+    }
+    prefixes = {p for p in prefixes if p and _UUID_FRAGMENT_RE.fullmatch(p)}
+    if not prefixes:
+        return evidence
+
+    # 一次查询取回全部候选，避免每条 evidence 各查一次库
+    matched = (
+        session.execute(
+            select(Review).where(
+                Review.project_id == a.project_id,
+                or_(*[Review.id.like(f"{p}%") for p in prefixes]),
+            )
+        )
+        .scalars()
+        .all()
+    )
+    rid_to_review = {p: r for p in prefixes for r in matched if r.id.startswith(p)}
+
+    for e in evidence:
+        if not isinstance(e, dict) or not e.get("review_id"):
+            continue
+        r = rid_to_review.get(str(e["review_id"])[:_EVIDENCE_ID_PREFIX_LEN])
+        if r is None:
+            continue
+        for field, value in (
+            ("rating", r.rating),
+            ("helpful_votes", r.helpful_votes),
+            ("asin", r.asin),
+        ):
+            if value is not None and e.get(field) is None:
+                e[field] = value
+    return evidence
 
 
 # ---------- 接口 ----------
@@ -359,7 +417,7 @@ def get_pain_point_detail(pain_point_id: str, request: Request) -> dict:
 
         detail = PainPointDetailVO(
             pain_point=PainPointVO.from_orm(pp),
-            attribution=AttributionVO.from_orm(attr) if attr else None,
+            attribution=AttributionVO.from_orm(attr, session) if attr else None,
             representative_reviews=rep_data,
             suggestions=sug_data,
             competitor_comparison=pp.competitor_breakdown_dict,
