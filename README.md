@@ -23,7 +23,7 @@ VOC Radar 将跨境卖家面对的"上千条竞品评论"转化为可执行的�
 - **前端**：原生 HTML + Chart.js（深色主题单页应用）
 - **数据库**：SQLite（原型零配置）
 - **AI 模型**：Model Router（OpenAI 兼容格式）
-  - 官方 Base URL：`https://model-router.edu-aliyun.com/v1`（赛方通道，走赛方 25000 Credits 额度）
+  - 赛方通道（决赛切换用）：`https://token-plan.cn-beijing.maas.aliyuncs.com/compatible-mode/v1`（Token Plan 专属，赛方额度；**复赛阶段实际使用下方百炼直连**，切换方案见工作区《决赛_赛方通道切换方案.md》）
   - 备选 Base URL：`https://dashscope.aliyuncs.com/compatible-mode/v1`（百炼直连，走个人 Key 自费）
   - 模型（`backend/.env` 中的变量名；模型可用性已于 2026-08-29 经 `check_models.py` 联网实测）：
     - `MODEL_EMBEDDING` = `text-embedding-v4`（向量化）
@@ -101,7 +101,7 @@ cd backend
 .\.venv\Scripts\python.exe backend\check_models.py
 
 # 只测赛方 Model Router 通道
-.\.venv\Scripts\python.exe backend\check_models.py --base-url https://model-router.edu-aliyun.com/v1 --api-key <赛方Key>
+.\.venv\Scripts\python.exe backend\check_models.py --base-url https://token-plan.cn-beijing.maas.aliyuncs.com/compatible-mode/v1 --api-key <赛方Key>
 ```
 
 ## 文档
