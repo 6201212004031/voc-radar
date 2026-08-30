@@ -74,6 +74,52 @@
     }
   }
 
+  // —— 同象限散点避让（确定性，无随机）——
+  // difficulty_score 由象限反推（0.3/0.5/0.7 三档），同象限 x 必然相同；
+  // 影响面接近的点会完全重叠，导致悬停/点击只能命中最上层。
+  // 规则：y 相差 < ROW_DY 的点视为同一行，行内水平对称错开；
+  // 错开范围钳制在象限内侧（距中线 ≥0.05），不改变象限归属；
+  // 单点行保持真实坐标。tooltip 恒显示真实 difficulty_score / impact_ratio。
+  const ROW_DY = 0.035; // ≈30px@380px 图高；链式合并保证跨边界点对也被避让
+  const MIN_DX = 0.045; // 行内相邻点最小水平间距
+  const X_SPAN = 0.15;  // 水平错开上限（0.3/0.7 ± 0.15 → 距中线 0.05）
+
+  function dodgeRows(items) {
+    const sorted = items
+      .slice()
+      .sort(
+        (a, b) =>
+          a.y - b.y ||
+          String(a.label || "").localeCompare(String(b.label || ""))
+      );
+    let row = null;
+    const rows = [];
+    sorted.forEach((p) => {
+      // 与行内最后一点比较（链式），y 逐渐爬升的点序列会并入同一行，
+      // 避免"与行首差一点超阈值"的跨边界点对漏检
+      if (!row || p.y - row.pts[row.pts.length - 1].y > ROW_DY) {
+        row = { pts: [] };
+        rows.push(row);
+      }
+      row.pts.push(p);
+    });
+    rows.forEach(({ pts }) => {
+      const n = pts.length;
+      if (n < 2) return;
+      const base = pts[0].x;
+      pts.forEach((p, i) => {
+        const off = (i - (n - 1) / 2) * MIN_DX;
+        const clamped = Math.max(-X_SPAN, Math.min(X_SPAN, off));
+        p._x = base + clamped;
+        // 行太长被钳到边缘时，向上微移避免再次重叠
+        if (clamped !== off) {
+          p._y = p.y + (i % 3) * 0.008;
+        }
+      });
+    });
+    return sorted;
+  }
+
   /**
    * Matrix 组件类
    */
@@ -116,15 +162,22 @@
 
       this.data = matrixData.slice();
 
-      // 按 quadrant 分组，每个象限一个 dataset 以独立配色
+      // 按 quadrant 分组，每个象限一个 dataset 以独立配色；
+      // 同象限内先做散点避让，再映射为坐标
       const quadrants = ["quick_win", "strategic", "filler", "thankless"];
       const datasets = quadrants.map((q) => {
-        const items = matrixData.filter((d) => d.quadrant === q);
+        const items = dodgeRows(
+          matrixData.filter((d) => d.quadrant === q).map((d) => ({
+            ...d,
+            x: d.difficulty_score != null ? +d.difficulty_score.toFixed(3) : 0.5,
+            y: d.impact_ratio != null ? +d.impact_ratio.toFixed(3) : 0,
+          }))
+        );
         return {
           label: quadrantLabel(q),
           data: items.map((d) => ({
-            x: d.difficulty_score != null ? +d.difficulty_score.toFixed(3) : 0.5,
-            y: d.impact_ratio != null ? +d.impact_ratio.toFixed(3) : 0,
+            x: +(d._x != null ? d._x : d.x),
+            y: +(d._y != null ? d._y : d.y),
           })),
           // thankless 空心（退场），其余实心
           backgroundColor: q === "thankless" ? "transparent" : quadrantColor(q),
