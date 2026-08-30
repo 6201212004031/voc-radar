@@ -80,11 +80,11 @@
   // 规则：y 相差 < ROW_DY 的点视为同一行，行内水平对称错开；
   // 错开范围钳制在象限内侧（距中线 ≥0.05），不改变象限归属；
   // 单点行保持真实坐标。tooltip 恒显示真实 difficulty_score / impact_ratio。
-  const ROW_DY = 0.035; // ≈30px@380px 图高；链式合并保证跨边界点对也被避让
+  const ROW_DY = 0.035; // 基准行距（y 量程 0.4 时 ≈30px@380px 图高），实际值随量程缩放
   const MIN_DX = 0.045; // 行内相邻点最小水平间距
   const X_SPAN = 0.15;  // 水平错开上限（0.3/0.7 ± 0.15 → 距中线 0.05）
 
-  function dodgeRows(items) {
+  function dodgeRows(items, rowDy) {
     const sorted = items
       .slice()
       .sort(
@@ -97,7 +97,7 @@
     sorted.forEach((p) => {
       // 与行内最后一点比较（链式），y 逐渐爬升的点序列会并入同一行，
       // 避免"与行首差一点超阈值"的跨边界点对漏检
-      if (!row || p.y - row.pts[row.pts.length - 1].y > ROW_DY) {
+      if (!row || p.y - row.pts[row.pts.length - 1].y > rowDy) {
         row = { pts: [] };
         rows.push(row);
       }
@@ -162,17 +162,34 @@
 
       this.data = matrixData.slice();
 
-      // 按 quadrant 分组，每个象限一个 dataset 以独立配色；
-      // 同象限内先做散点避让，再映射为坐标
+      // y 轴上限（与 scales.y.max 同源，供行距阈值缩放）
+      const yMax = Math.max(
+        0.4,
+        Math.ceil(Math.max(...matrixData.map((d) => d.impact_ratio || 0)) * 10) / 10 + 0.05
+      );
+      const rowDy = ROW_DY * (yMax / 0.4);
+
+      // 先按「反推难度档」分组做避让，再分配到象限数据集。
+      // 关键：quick_win/filler 同为 0.3、strategic/thankless 同为 0.7——
+      // 不同象限的数据集共享同一 x 基准，只按象限分组会漏掉跨数据集的同 x 重叠
+      const buckets = new Map();
+      const allItems = matrixData.map((d) => {
+        const it = {
+          ...d,
+          x: d.difficulty_score != null ? +d.difficulty_score.toFixed(3) : 0.5,
+          y: d.impact_ratio != null ? +d.impact_ratio.toFixed(3) : 0,
+        };
+        const key = String(it.x);
+        if (!buckets.has(key)) buckets.set(key, []);
+        buckets.get(key).push(it);
+        return it;
+      });
+      buckets.forEach((items) => dodgeRows(items, rowDy));
+
+      // 按 quadrant 分组，每个象限一个 dataset 以独立配色（坐标用避让后的位置）
       const quadrants = ["quick_win", "strategic", "filler", "thankless"];
       const datasets = quadrants.map((q) => {
-        const items = dodgeRows(
-          matrixData.filter((d) => d.quadrant === q).map((d) => ({
-            ...d,
-            x: d.difficulty_score != null ? +d.difficulty_score.toFixed(3) : 0.5,
-            y: d.impact_ratio != null ? +d.impact_ratio.toFixed(3) : 0,
-          }))
-        );
+        const items = allItems.filter((d) => d.quadrant === q);
         return {
           label: quadrantLabel(q),
           data: items.map((d) => ({
