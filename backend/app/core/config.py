@@ -117,6 +117,13 @@ class Settings(BaseSettings):
     )
     LOG_DIR: str = Field(default="./logs", description="日志目录")
 
+    # ---------- 只读模式（公开演示部署用） ----------
+    READ_ONLY: bool = Field(
+        default=False,
+        description="只读演示模式：为 true 时拒绝所有非 GET/HEAD/OPTIONS 请求，"
+                    "仅开放浏览类接口（公开只读体验部署用，不暴露分析触发入口）",
+    )
+
     # ---------- 派生属性 ----------
     @property
     def db_path(self) -> Path:

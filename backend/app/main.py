@@ -69,6 +69,22 @@ app.add_middleware(
 )
 
 
+# ---------- 只读模式（公开演示部署：拦截一切写操作） ----------
+@app.middleware("http")
+async def read_only_guard(request: Request, call_next):
+    if settings.READ_ONLY and request.method not in ("GET", "HEAD", "OPTIONS"):
+        return JSONResponse(
+            status_code=403,
+            content={
+                "code": 4103,
+                "message": "当前为只读演示模式（READ_ONLY=true），仅开放浏览类接口",
+                "data": None,
+                "request_id": request.headers.get("X-Request-ID", ""),
+            },
+        )
+    return await call_next(request)
+
+
 # ---------- 路由挂载 ----------
 app.include_router(api_router)
 
