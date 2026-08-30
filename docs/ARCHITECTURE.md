@@ -789,6 +789,8 @@ pytest-asyncio==0.23.6
 
 ### 6.2 前端依赖（CDN 引用，无需构建）
 
+> **2026-08-30 更新**：实际实现已改为**本地引用** `frontend/vendor/`（chart.umd.min.js / marked.min.js / purify.min.js，版本与下述一致），消除对 jsdelivr 的网络依赖（中国大陆访问慢且不稳定，路演断网风险）。下方 CDN 写法仅作历史参考。
+
 在 `index.html` 中通过 CDN 引入：
 
 ```html

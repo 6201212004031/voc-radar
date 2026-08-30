@@ -5,12 +5,14 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>VOC Radar 评论雷达 — 跨境竞品评论洞察看板</title>
   <link rel="stylesheet" href="css/style.css" />
-  <!-- Chart.js：图表渲染 -->
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
-  <!-- marked.js：Markdown 渲染 -->
-  <script src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js"></script>
-  <!-- DOMPurify：Markdown 渲染后的 XSS 防护 -->
-  <script src="https://cdn.jsdelivr.net/npm/dompurify@3.0.11/dist/purify.min.js"></script>
+  <!-- 图表/Markdown 渲染库：本地 vendor 引用（零网络依赖）。
+       依据 .impeccable.md 硬约束——路演现场网络不可依赖，且中国大陆
+       访问 jsdelivr 慢且不稳定（实测首载 3.4s+、偶发 30s+ 挂起）。
+       版本与原 CDN 引用一致：Chart.js 4.4.2 / marked 12.0.2 / DOMPurify 3.0.11，
+       升级时下载对应版本替换 vendor/ 下文件即可 -->
+  <script src="vendor/chart.umd.min.js"></script>
+  <script src="vendor/marked.min.js"></script>
+  <script src="vendor/purify.min.js"></script>
 </head>
 <body>
   <!-- ============ 顶部导航 ============ -->
