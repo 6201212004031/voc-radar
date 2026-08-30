@@ -89,6 +89,15 @@ async def read_only_guard(request: Request, call_next):
 app.include_router(api_router)
 
 
+# ---------- 健康检查 ----------
+# 注意：必须先于 StaticFiles("/", html=True) 挂载注册——否则 /health 会被
+# 前端静态托管截胡返回 404（2026-08-30 发现的既有路由顺序缺陷，此处修复）
+@app.get("/health", tags=["系统"])
+def health() -> dict:
+    """健康检查."""
+    return {"status": "ok", "service": "voc-radar", "version": "0.1.0"}
+
+
 # ---------- 前端静态文件托管 ----------
 # backend/app/main.py 向上 4 层: app/main.py -> app -> backend -> voc-radar
 _FRONTEND_DIR = Path(__file__).resolve().parent.parent.parent / "frontend"
@@ -151,10 +160,3 @@ async def unhandled_exception_handler(request: Request, exc: Exception):
             "request_id": request.headers.get("X-Request-ID", ""),
         },
     )
-
-
-# ---------- 健康检查 ----------
-@app.get("/health", tags=["系统"])
-def health() -> dict:
-    """健康检查."""
-    return {"status": "ok", "service": "voc-radar", "version": "0.1.0"}

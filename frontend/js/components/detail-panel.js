@@ -284,9 +284,12 @@
             }
             if (ev.asin) metaParts.push(escapeHtml(ev.asin));
             if (ev.review_id) {
+              // 代表性评论卡片的 id 是完整 UUID；evidence 里的 review_id
+              // 是截断形式，需用后端回查补全的 full_review_id 才能命中锚点
+              const anchorId = ev.full_review_id || ev.review_id;
               metaParts.push(
                 '<a class="evidence-link" data-review-id="' +
-                  escapeHtml(ev.review_id) +
+                  escapeHtml(anchorId) +
                   '">查看原文</a>'
               );
             }

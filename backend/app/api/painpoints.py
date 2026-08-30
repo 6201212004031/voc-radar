@@ -135,6 +135,8 @@ def _enrich_evidence(session: Session, a: Attribution) -> list[dict[str, Any]]:
     需要回查 reviews 表才拿得到。evidence 里的 review_id 是截断形式，故按
     前缀匹配。仅补缺失字段，已存在的值（如 Seed Demo 自带）原样保留；
     未命中的条目不加占位值，交由前端按"有则渲染、无则不渲染"处理。
+    命中的条目额外附带 full_review_id（reviews 表完整主键）——前端
+    「查看原文」用它精确定位评论卡片（截断 id 拼出的锚点不存在）。
     """
     evidence = a.evidence_list
     if not evidence:
@@ -173,6 +175,7 @@ def _enrich_evidence(session: Session, a: Attribution) -> list[dict[str, Any]]:
             ("rating", r.rating),
             ("helpful_votes", r.helpful_votes),
             ("asin", r.asin),
+            ("full_review_id", r.id),
         ):
             if value is not None and e.get(field) is None:
                 e[field] = value
