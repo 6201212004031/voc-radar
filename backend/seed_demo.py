@@ -1,9 +1,18 @@
-"""VOC Radar — 演示数据灌库脚本（mock，仅用于截图/录屏）.
+"""VOC Radar — 演示数据灌库脚本（mock，仅用于截图/录屏/评委体验）.
 
-直接通过 SQLAlchemy 连接 backend/data/voc_radar.db，插入一份结构完整、
-字段对齐 overview/heatmap/matrix/report 契约的示例分析结果。
+直接通过 SQLAlchemy 写入演示数据：一份结构完整、字段对齐
+overview/heatmap/matrix/report 契约的示例分析结果。
 
-不触发任何 LLM 调用，纯静态 mock。运行：
+不触发任何 LLM 调用，纯静态 mock；结尾自动渲染 Markdown 报告（S7 纯模板，
+同样零 LLM），评委载入 Demo 后看板/下钻/报告三件套一步到位。
+
+自足性（2026-08-30 修复，评委冷启动路径）：
+  - 遵循 DATABASE_URL / REPORT_OUTPUT_DIR 环境变量（与主服务一致）。
+    此前硬编码 data/voc_radar.db，隔离测试设了环境变量也会写进真实库；
+  - 启动时 init_db() 自动建表——空仓库克隆后无需先启动服务即可直接运行
+    （此前空库报 no such table: projects）。
+
+运行：
     cd backend
     .venv/Scripts/python.exe seed_demo.py
 """
@@ -16,6 +25,8 @@ from datetime import datetime, timezone, timedelta
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
+from app.core.config import settings, ensure_dirs
+from app.models.database import init_db
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
@@ -28,8 +39,12 @@ from app.models.schemas import (  # noqa: E402
     ListingSuggestion,
 )
 
-DB = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "voc_radar.db")
-engine = create_engine(f"sqlite:///{DB}", connect_args={"check_same_thread": False})
+ensure_dirs()
+init_db()  # 空库自动建表；已建表时为幂等操作
+
+engine = create_engine(
+    f"sqlite:///{settings.db_path}", connect_args={"check_same_thread": False}
+)
 Session = sessionmaker(bind=engine)
 
 now = datetime.now(timezone.utc)
@@ -441,9 +456,24 @@ def main():
             )
 
         s.commit()
-        print("✅ seed 完成 | project_id =", pid)
-        print("   痛点簇:", len(pp_defs), "| 归因:", sum(1 for d in pp_defs if d.get("root_cause")),
-              "| 评论:", len(rev_rows) + len(positive_reviews), "| Listing:", len(listing_defs))
+
+    # 报告自动生成（S7 纯模板渲染，零 LLM 调用）。此前漏了这一步，
+    # 评委载入 Demo 后点「预览报告」会 404，需另跑 generate_report.py
+    from app.pipeline.stages.s7_report import run_s7_report
+
+    report = run_s7_report(pid)
+
+    # 诚实计数：数的是 attributions 表实插行数（此前数的是含 root_cause
+    # 的痛点定义数 = 10，与实际归因记录 5 不符，输出有误导）
+    with Session() as s2:
+        attr_count = (
+            s2.query(Attribution).filter(Attribution.project_id == pid).count()
+        )
+
+    print("✅ seed 完成 | project_id =", pid)
+    print("   痛点簇:", len(pp_defs), "| 归因:", attr_count,
+          "| 评论:", len(rev_rows) + len(positive_reviews), "| Listing:", len(listing_defs))
+    print("   报告:", report.report_path if hasattr(report, "report_path") else report)
 
 
 if __name__ == "__main__":

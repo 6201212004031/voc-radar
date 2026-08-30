@@ -70,8 +70,9 @@ voc-radar/
 不自动打开浏览器：`start.bat --no-browser`；换端口：用记事本改 `start.bat` 里的 `set "PORT=8000"`。
 
 > **首次克隆？先生成内置 Demo（无需 API Key）**：
-> `cd backend` 后执行 `..\.venv\Scripts\python.exe seed_demo.py`，
-> 再打开首页点击「**载入内置 Demo 数据**」即可浏览完整看板。
+> `cd backend` 后执行 `..\.venv\Scripts\python.exe seed_demo.py`
+> （自动建表 + 灌入 Demo 数据 + 自动生成报告，空库可直接跑、无需先启动服务），
+> 再打开首页点击「**载入内置 Demo 数据**」即可浏览完整看板与报告。
 > 未配置 API Key 时 start.bat 会以「**无 Key 演示模式**」启动——可浏览已有分析结果，触发新分析需配置 Key。
 
 ### 方式二：手工命令
@@ -124,7 +125,7 @@ cd backend
 ## 当前状态（诚实标注，截至 2026-08-29）
 
 - ✅ 一键启动脚本 `start.bat`、模型自检脚本 `backend/check_models.py` 已就绪
-- ✅ 前后端代码与 7 阶段 Pipeline 已完整实现；克隆后先跑 `backend/seed_demo.py` 即可载入内置 Demo（无需 API Key）
+- ✅ 前后端代码与 7 阶段 Pipeline 已完整实现；克隆后先跑 `backend/seed_demo.py` 即可载入内置 Demo（自动建表 + 自动生成报告，无需 API Key、无需先启动服务）
 - ✅ **真实数据集已接入并端到端跑通**（2026-08-29：McAuley-Lab Amazon Reviews 2023，798 条真实评论 → 10 痛点簇 → Top5 归因 → 完整报告，详见《复赛提交说明文档》第 7.3 节；数据文件按 `.gitignore` 约定不入仓库，可用 `backend/download_dataset.py` 重新下载）
 - ✅ **模型可用性已实测**：dashscope 通道无前缀写法 5/5 可用，前缀疑点已终结
 - ✅ 未配置 API Key 时以「**无 Key 演示模式**」启动：可浏览已有分析结果与内置 Demo；公开只读体验部署可用 `READ_ONLY=true`（拒绝一切写请求）
