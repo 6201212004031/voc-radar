@@ -57,6 +57,10 @@
       <h2>输入品类或竞品 ASIN，开始评论洞察分析</h2>
       <p>系统将自动完成：评论入库 → 预处理 → 语义聚类 → 痛点标签 → 根因归因 → 改进建议 → 报告生成</p>
       <p class="empty-hint">品类关键词（如 <code>bluetooth earbuds</code>）标注分析场景，分析范围为内置评论数据集；输入 ASIN（如 <code>B0xxxxxx, B0yyyyyy</code>）则仅分析对应竞品的评论</p>
+      <div class="empty-actions">
+        <button id="loadDemoBtn" class="btn btn-ghost" type="button">载入内置 Demo 数据</button>
+        <span class="empty-hint">或直接浏览已有分析结果（运行过 <code>backend/seed_demo.py</code> 后可用，无需 API Key）</span>
+      </div>
     </section>
 
     <!-- ============ 分析概览区（KPI + 图表 + 卖点） ============ -->

@@ -52,7 +52,7 @@ if not exist "%VENV_PY%" (
     echo        [失败] 找不到虚拟环境：%VENV_PY%
     echo.
     echo        请先创建虚拟环境并安装依赖（在项目根目录执行）：
-    echo            C:\Users\32615\.workbuddy\binaries\python\versions\3.13.12\python.exe -m venv .venv
+    echo            python -m venv .venv
     echo            .venv\Scripts\python.exe -m pip install -r backend\requirements.txt
     echo.
     goto :fail
@@ -74,14 +74,16 @@ if not exist "%FRONTEND_DIR%" (
     echo        [通过] 前端目录：%FRONTEND_DIR%
 )
 
-REM --- 1.4 .env 文件与 API Key ---
+REM --- 1.4 .env 文件与 API Key（缺失时降级为「无 Key 演示模式」，不阻断启动） ---
+REM     浏览已有分析结果与内置 Demo 不需要 Key；只有触发新的 Pipeline 分析才需要。
+set "KEYLESS=1"
 if not exist "%ENV_FILE%" (
-    echo        [失败] 找不到配置文件：%ENV_FILE%
+    echo        [警告] 找不到配置文件：%ENV_FILE%
+    echo               将以「无 Key 演示模式」启动：可浏览已有分析结果，无法触发新分析。
+    echo               如需完整功能，请先执行：
+    echo                   copy backend\.env.example backend\.env   并填入 API Key
     echo.
-    echo        请先复制模板并填入 API Key：
-    echo            copy backend\.env.example backend\.env
-    echo.
-    goto :fail
+    goto :env_key_done
 )
 echo        [通过] 配置文件：%ENV_FILE%
 
@@ -95,17 +97,22 @@ if defined API_KEY_VALUE (
 )
 
 if not defined API_KEY_VALUE (
-    echo        [失败] .env 里没有配置 MODEL_ROUTER_API_KEY。
-    echo               请编辑 backend\.env，填入赛方 Model Router 的 Key 或个人百炼 Key。
-    goto :fail
+    echo        [警告] .env 里没有配置 MODEL_ROUTER_API_KEY。
+    echo               将以「无 Key 演示模式」启动：可浏览已有分析结果，无法触发新分析。
+    echo.
+    goto :env_key_done
 )
 echo "!API_KEY_VALUE!" | findstr /i /c:"your-personal" /c:"your-key" /c:"changeme" >nul
 if not errorlevel 1 (
-    echo        [失败] .env 里的 MODEL_ROUTER_API_KEY 仍是模板占位值。
-    echo               请替换为真实 Key 后重新启动。
-    goto :fail
+    echo        [警告] .env 里的 MODEL_ROUTER_API_KEY 仍是模板占位值。
+    echo               将以「无 Key 演示模式」启动；请替换为真实 Key 以启用完整分析。
+    echo.
+    goto :env_key_done
 )
+set "KEYLESS=0"
 echo        [通过] API Key 已配置（Key 内容不在此打印）
+
+:env_key_done
 
 REM --- 1.5 uvicorn 是否已安装 ---
 "%VENV_PY%" -c "import uvicorn" >nul 2>&1
@@ -136,6 +143,10 @@ echo        工作目录：%BACKEND_DIR%
 echo.
 echo        单端口说明：该端口同时提供 API（/api/v1）与前端页面（/），
 echo                    无需另起前端服务，也请不要再用 python -m http.server。
+if "%KEYLESS%"=="1" (
+    echo        运行模式：无 Key 演示 —— 可浏览已有分析结果与内置 Demo；
+    echo                   触发新的 Pipeline 分析需要配置 API Key（见上方提示）。
+)
 echo.
 
 REM ============================================================================

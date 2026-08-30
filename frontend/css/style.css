@@ -1138,6 +1138,16 @@ button { font-family: inherit; cursor: pointer; }
 ::-webkit-scrollbar-thumb { background: var(--bg-elev-3); border-radius: 0; }
 ::-webkit-scrollbar-thumb:hover { background: var(--line-str); }
 
+/* ---------- 空态操作区：载入内置 Demo ---------- */
+.empty-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+  flex-wrap: wrap;
+  margin-top: var(--s-4);
+}
+.empty-actions .empty-hint { margin: 0; }
+
 /* ---------- 响应式 ---------- */
 @media (max-width: 980px) {
   .kpi-row { grid-template-columns: repeat(2, 1fr); }

@@ -285,6 +285,33 @@
     reportView.open(state.currentProjectId);
   }
 
+  // ===== 载入内置 Demo（最近一个 completed 项目；配合 backend/seed_demo.py） =====
+  async function loadDemo() {
+    try {
+      const data = await global.VOC_API.listProjects(1, 20);
+      const items = (data && data.items) || [];
+      let pick = null;
+      for (const p of items) {
+        if (p.status !== "completed") continue;
+        if (!pick || String(p.created_at || "") > String(pick.created_at || "")) {
+          pick = p;
+        }
+      }
+      if (!pick) {
+        toast(
+          "未找到已完成的分析项目：先运行 backend/seed_demo.py 生成内置 Demo（无需 API Key）",
+          "error"
+        );
+        return;
+      }
+      toast("正在载入：" + (pick.name || pick.id), "success");
+      await loadOverview(pick.id);
+    } catch (err) {
+      console.error("[App] loadDemo error", err);
+      toast("载入 Demo 失败：" + (err.message || "未知错误"), "error");
+    }
+  }
+
   // ===== 初始化 =====
   function init() {
     // 实例化组件
@@ -316,6 +343,10 @@
 
     // 绑定顶部导航事件
     $("analyzeBtn").addEventListener("click", startAnalysis);
+    const demoBtn = $("loadDemoBtn");
+    if (demoBtn) {
+      demoBtn.addEventListener("click", loadDemo);
+    }
     $("exportReportBtn").addEventListener("click", exportReport);
     $("viewReportBtn").addEventListener("click", viewReport);
 
@@ -341,6 +372,7 @@
     global.VOC_App = {
       state: state,
       loadOverview: loadOverview,
+      loadDemo: loadDemo,
       startAnalysis: startAnalysis,
       openPainPoint: onPainPointClick,
       components: {
