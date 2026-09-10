@@ -48,3 +48,9 @@ dist/
 _dl/
 _video_tmp/
 _video_check/
+_vc2/
+
+# 临时验证脚本（录完/验完即弃，不入库）
+_verify_scroll_fix.py
+_verify_*.py
+_probe_*.py

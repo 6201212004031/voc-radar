@@ -131,8 +131,14 @@
       if (!modal || !body) return;
 
       this.currentProjectId = projectId;
+      // 记录主页面滚动位置：打开弹层时浏览器可能因 focus 触发 scrollIntoView，
+      // 需在锁滚动之后把主页面恢复原位，避免背景跳动。
+      this._restoreY = window.scrollY || 0;
       modal.hidden = false;
       modal.setAttribute("aria-hidden", "false");
+      if (global.VOC_ScrollLock) global.VOC_ScrollLock.sync();
+      const restoreY = this._restoreY;
+      requestAnimationFrame(() => window.scrollTo(0, restoreY));
       body.innerHTML =
         '<div class="chart-empty"><span class="loading-spinner"></span> 正在加载报告…</div>';
 
@@ -155,10 +161,13 @@
     /** 关闭弹层 */
     close() {
       const modal = document.getElementById(this.options.modalId);
+      const restoreY = window.scrollY || 0;
       if (modal) {
         modal.hidden = true;
         modal.setAttribute("aria-hidden", "true");
       }
+      if (global.VOC_ScrollLock) global.VOC_ScrollLock.sync();
+      requestAnimationFrame(() => window.scrollTo(0, restoreY));
     }
 
     /**

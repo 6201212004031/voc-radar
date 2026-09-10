@@ -717,6 +717,8 @@ button { font-family: inherit; cursor: pointer; }
 .detail-body {
   flex: 1;
   overflow-y: auto;
+  /* 滚到边界后不把滚轮链式传给主页面（与 js/scroll-lock.js 双保险） */
+  overscroll-behavior: contain;
   padding: var(--s-5);
   display: flex;
   flex-direction: column;
@@ -1039,6 +1041,8 @@ button { font-family: inherit; cursor: pointer; }
 .report-body {
   flex: 1;
   overflow-y: auto;
+  /* 滚到边界后不把滚轮链式传给主页面（与 js/scroll-lock.js 双保险） */
+  overscroll-behavior: contain;
   padding: var(--s-5);
 }
 
@@ -1169,4 +1173,11 @@ button { font-family: inherit; cursor: pointer; }
   .search-box input { width: 100%; flex: 1; }
   .main { padding-inline: var(--s-3); }
   .section-body { padding-block: var(--s-4); }
+}
+
+/* ---------- 弹层滚动锁（js/scroll-lock.js 在弹层打开时给 body 挂此类） ---------- */
+/* 详情抽屉 / 报告弹层任一打开时锁定主页面滚动，防止滚轮在遮罩或
+   滚动容器边界处穿透到背后的主页面（演示视频滚动错位修复） */
+body.voc-locked {
+  overflow: hidden;
 }

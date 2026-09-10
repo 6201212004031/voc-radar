@@ -30,6 +30,21 @@ async def scroll(page, times: int, dy: int = 380, wait: int = 1500) -> None:
         await page.wait_for_timeout(wait)
 
 
+async def focus_scroll_area(page, selector: str) -> None:
+    """滚动前把鼠标移到目标滚动容器中心.
+
+    mouse.wheel 的事件落点取决于当前鼠标位置：不预先移动的话，鼠标
+    一直停在视口左上角——弹层打开时那里是遮罩层，滚轮会穿透滚动
+    背后的主页面。这正是旧版视频「滚动详情/滚动报告却滚主页面」的根因。
+    """
+    box = await page.locator(selector).bounding_box()
+    if box:
+        await page.mouse.move(
+            box["x"] + box["width"] / 2, box["y"] + box["height"] / 2
+        )
+        await page.wait_for_timeout(300)
+
+
 async def ensure_closed(page) -> None:
     """关闭可能打开的详情面板/报告弹层."""
     await page.evaluate(
@@ -93,12 +108,14 @@ async def main_async(project_id: str) -> int:
         await page.wait_for_timeout(5000)
 
         # 3) 滚动看板全貌（KPI → 热力图 → 矩阵 → 卖点清单）
+        await focus_scroll_area(page, "#dashboard")
         await scroll(page, 8, dy=380, wait=1600)
         await page.evaluate("() => window.scrollTo({top: 0, behavior: 'smooth'})")
         await page.wait_for_timeout(2500)
 
         # 4) 下钻 Top1 痛点
         if await open_pain_point(page, 0):
+            await focus_scroll_area(page, "#detailBody")
             await scroll(page, 5, dy=360, wait=1500)
             await ensure_closed(page)
 
@@ -106,6 +123,7 @@ async def main_async(project_id: str) -> int:
         await page.evaluate("() => window.scrollTo({top: 0, behavior: 'smooth'})")
         await page.wait_for_timeout(1500)
         if await open_pain_point(page, 1):
+            await focus_scroll_area(page, "#detailBody")
             await scroll(page, 4, dy=360, wait=1400)
             await ensure_closed(page)
 
@@ -115,6 +133,7 @@ async def main_async(project_id: str) -> int:
         await page.click("#viewReportBtn")
         await page.wait_for_selector("#reportModal:not([hidden])", timeout=20000)
         await page.wait_for_timeout(4000)
+        await focus_scroll_area(page, "#reportBody")
         await scroll(page, 14, dy=360, wait=1400)
 
         # 7) 收尾停留

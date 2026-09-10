@@ -155,6 +155,7 @@
 
       panel.hidden = false;
       panel.setAttribute("aria-hidden", "false");
+      if (global.VOC_ScrollLock) global.VOC_ScrollLock.sync();
       title.textContent = "痛点详情加载中…";
       body.innerHTML =
         '<div class="chart-empty"><span class="loading-spinner"></span> 正在拉取痛点详情…</div>';
@@ -551,6 +552,7 @@
         panel.setAttribute("aria-hidden", "true");
       }
       this.currentData = null;
+      if (global.VOC_ScrollLock) global.VOC_ScrollLock.sync();
     }
   }
 
